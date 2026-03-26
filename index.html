@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>PORTAL ISO — Aperture Isometric Laboratories</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- BabylonJS (includes WebXR helpers) -->
+  <!-- loaders must come AFTER babylon.js -->
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="src/ui/styles.css?v=818a4f6a" />
+  <link rel="stylesheet" href="src/ui/dialogue.css?v=6cfca9fa" />
+  <link rel="stylesheet" href="src/ui/ar.css?v=92cab65b" />
+  <style>
+    /* ── Camera buttons ────────────────────────────────── */
+    #btn-enter-ar, #btn-fullscreen, #btn-orbit {
+      display: none;
+      position: fixed; z-index: 600;
+      width: 38px; height: 38px; top: 6px;
+      background: rgba(8,8,11,.9);
+      border: 1px solid #383848;
+      color: #9090a8; font-size: 16px; line-height: 1;
+      cursor: pointer; border-radius: 3px;
+      transition: color .15s, border-color .15s;
+      touch-action: manipulation;
+    }
+    #btn-fullscreen { top: 54px; right: 8px; }
+    #btn-orbit      { top: 54px; right: 54px; }
+    #btn-enter-ar   { top: 54px; right: 100px; }
+    #btn-fullscreen:hover,
+    #btn-orbit:hover,
+    #btn-enter-ar:hover { color: #e2e2ee; border-color: #ff6a00; }
+    #btn-orbit.active   { color: #ff6a00; border-color: #ff6a00; }
+
+    /* ── Touch D-pad ────────────────────────────────────── */
+    #touch-dpad-arrows,
+    #touch-dpad-portals { display: none; pointer-events: auto; }
+
+    #touch-dpad-arrows {
+      position: fixed; bottom: 36px; left: 12px; z-index: 500;
+      flex-direction: column; align-items: center; gap: 4px;
+    }
+    body:has(#ar-dom-overlay:not([style*="display:none"])) #touch-dpad-arrows {
+      bottom: 142px;
+    }
+    .dpad-row  { display: flex; gap: 4px; align-items: center; }
+    .dpad-gap  { width: 48px; }
+
+    #touch-dpad-arrows button {
+      width: 52px; height: 52px;
+      background: rgba(0,0,0,.75);
+      border: 1px solid rgba(255,106,0,.55);
+      color: #ff6a00; font-size: 20px;
+      cursor: pointer; border-radius: 6px;
+      touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    }
+    #touch-dpad-arrows button:active { background: rgba(255,106,0,.18); }
+
+    #touch-dpad-portals {
+      position: fixed; bottom: 36px; right: 12px; z-index: 500;
+      flex-direction: column; gap: 10px;
+    }
+    body:has(#ar-dom-overlay:not([style*="display:none"])) #touch-dpad-portals {
+      bottom: 142px;
+    }
+    #touch-dpad-portals button {
+      width: 64px; height: 64px;
+      font-size: 14px; letter-spacing: 2px; font-weight: 700;
+      font-family: var(--font-mono);
+      cursor: pointer; border-radius: 8px;
+      touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    }
+    #touch-dpad-portals button:active { opacity: .7; }
+    #dpad-portal-a {
+      border: 2px solid #0099ff; color: #0099ff;
+      background: rgba(0,153,255,.15);
+    }
+    #dpad-portal-b {
+      border: 2px solid #ff6a00; color: #ff6a00;
+      background: rgba(255,106,0,.15);
+    }
+
+    /* ── Mobile responsive ──────────────────────────────── */
+    /* Portrait mobile ≤ 480px */
+    @media (max-width: 480px) {
+      .menu-content {
+        padding: 28px 18px 22px !important;
+        min-width: 0 !important;
+        width: 96vw !important;
+        box-sizing: border-box;
+      }
+      .game-title      { font-size: 26px !important; letter-spacing: 3px !important; }
+      .subtitle        { font-size: 8px !important; }
+      .menu-btn        { padding: 11px 14px !important; font-size: 10px !important; letter-spacing: 2px !important; }
+      .panel           { min-width: 0 !important; width: 96vw !important; padding: 16px 14px !important; box-sizing: border-box; }
+      .result-content  { min-width: 0 !important; width: 96vw !important; padding: 24px 16px !important; box-sizing: border-box; }
+      .result-title    { font-size: 22px !important; letter-spacing: 4px !important; }
+      .hud-top         { font-size: 8px !important; padding: 0 8px !important; height: 34px !important; }
+      .controls-legend { display: none !important; }
+      .portal-indicators { bottom: 148px !important; }
+      /* Dialogue above touch controls */
+      #dialogue-panel.visible { bottom: 160px !important; }
+    }
+
+    /* Landscape mobile — short screens */
+    @media (max-height: 500px) {
+      .menu-content    { padding: 16px 18px !important; gap: 8px !important; }
+      .game-title      { font-size: 22px !important; }
+      .menu-btn        { padding: 8px 14px !important; }
+      .hud-top         { height: 28px !important; font-size: 8px !important; }
+      .controls-legend { display: none !important; }
+      #dialogue-panel.visible { bottom: 160px !important; }
+    }
+  
+    /* ── Splash screen ──────────────────────────────────── */
+    #splash-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #05050a;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono, 'Share Tech Mono', monospace);
+    }
+    #splash-screen.hidden { display: none; }
+
+    @keyframes splash-fade-out {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+    .splash-fadeout {
+      animation: splash-fade-out 0.6s ease forwards;
+    }
+
+    .splash-inner {
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+      width: min(480px, 92vw); text-align: center;
+    }
+
+    .splash-logo { position: relative; }
+    @keyframes splash-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    .splash-aperture {
+      animation: splash-spin 8s linear infinite;
+      filter: drop-shadow(0 0 12px rgba(255,106,0,0.45));
+    }
+
+    .splash-title {
+      font-family: var(--font-display, 'Rajdhani', sans-serif);
+      font-size: 42px; font-weight: 700;
+      letter-spacing: 6px; color: #e2e2ee;
+      margin: 0; line-height: 1;
+    }
+    .splash-iso {
+      color: #ff6a00; font-size: 28px; letter-spacing: 2px;
+      vertical-align: super; margin-left: 4px;
+    }
+
+    .splash-sub {
+      font-size: 9px; letter-spacing: 3px;
+      color: #5a5a72; margin: 0;
+    }
+
+    .splash-bar-wrap { width: 100%; margin-top: 8px; }
+    .splash-bar-track {
+      width: 100%; height: 3px;
+      background: #1a1a2a; border-radius: 2px;
+      overflow: hidden; margin-bottom: 8px;
+    }
+    .splash-bar-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #ff6a00, #ffb347);
+      border-radius: 2px;
+      transition: width 0.25s ease;
+      box-shadow: 0 0 8px rgba(255,106,0,0.6);
+    }
+    .splash-bar-labels {
+      display: flex; justify-content: space-between;
+      font-size: 9px; letter-spacing: 1px; color: #4a4a60;
+    }
+    #splash-label { color: #8080a0; }
+    #splash-pct   { color: #ff6a00; }
+
+    .splash-notice {
+      font-size: 7px; letter-spacing: 2px;
+      color: #2a2a38; margin: 0; margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ SPLASH SCREEN ══════════════════════════════════════ -->
+  <div id="splash-screen">
+    <div class="splash-inner">
+
+      <!-- Animated aperture logo -->
+      <div class="splash-logo">
+        <svg viewBox="0 0 100 100" width="96" height="96" class="splash-aperture">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="#ff6a00" stroke-width="2.5"/>
+          <circle cx="50" cy="50" r="30" fill="none" stroke="#ff6a00" stroke-width="1.5" opacity=".5"/>
+          <circle cx="50" cy="50" r="8"  fill="#ff6a00"/>
+          <line x1="50" y1="5"  x2="50" y2="20" stroke="#ff6a00" stroke-width="2.5"/>
+          <line x1="50" y1="80" x2="50" y2="95" stroke="#ff6a00" stroke-width="2.5"/>
+          <line x1="5"  y1="50" x2="20" y2="50" stroke="#ff6a00" stroke-width="2.5"/>
+          <line x1="80" y1="50" x2="95" y2="50" stroke="#ff6a00" stroke-width="2.5"/>
+          <line x1="18" y1="18" x2="29" y2="29" stroke="#ff6a00" stroke-width="1.5"/>
+          <line x1="71" y1="71" x2="82" y2="82" stroke="#ff6a00" stroke-width="1.5"/>
+          <line x1="82" y1="18" x2="71" y2="29" stroke="#ff6a00" stroke-width="1.5"/>
+          <line x1="18" y1="82" x2="29" y2="71" stroke="#ff6a00" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <h1 class="splash-title">PORTAL<span class="splash-iso">ISO</span></h1>
+      <p  class="splash-sub">APERTURE SCIENCE ENRICHMENT CENTER</p>
+
+      <!-- Progress bar -->
+      <div class="splash-bar-wrap">
+        <div class="splash-bar-track">
+          <div class="splash-bar-fill" id="splash-bar-fill"></div>
+        </div>
+        <div class="splash-bar-labels">
+          <span id="splash-label">INITIALIZING…</span>
+          <span id="splash-pct">0%</span>
+        </div>
+      </div>
+
+      <p class="splash-notice">APERTURE SCIENCE — WE DO WHAT WE MUST BECAUSE WE CAN</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN MENU
+  ════════════════════════════════════════════════════════ -->
+  <div id="main-menu" class="overlay active">
+    <div class="menu-bg-grid"></div>
+    <div class="menu-content">
+      <div class="aperture-logo">
+        <svg viewBox="0 0 100 100" width="80" height="80" aria-label="Aperture Science">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="#ff6a00" stroke-width="3"/>
+          <circle cx="50" cy="50" r="30" fill="none" stroke="#ff6a00" stroke-width="2"/>
+          <circle cx="50" cy="50" r="8"  fill="#ff6a00"/>
+          <line x1="50" y1="5"  x2="50" y2="20" stroke="#ff6a00" stroke-width="3"/>
+          <line x1="50" y1="80" x2="50" y2="95" stroke="#ff6a00" stroke-width="3"/>
+          <line x1="5"  y1="50" x2="20" y2="50" stroke="#ff6a00" stroke-width="3"/>
+          <line x1="80" y1="50" x2="95" y2="50" stroke="#ff6a00" stroke-width="3"/>
+          <line x1="18" y1="18" x2="29" y2="29" stroke="#ff6a00" stroke-width="2"/>
+          <line x1="71" y1="71" x2="82" y2="82" stroke="#ff6a00" stroke-width="2"/>
+          <line x1="82" y1="18" x2="71" y2="29" stroke="#ff6a00" stroke-width="2"/>
+          <line x1="18" y1="82" x2="29" y2="71" stroke="#ff6a00" stroke-width="2"/>
+        </svg>
+      </div>
+      <h1 class="game-title">PORTAL<span class="title-iso">ISO</span></h1>
+      <p class="subtitle">APERTURE ISOMETRIC LABORATORIES</p>
+      <div class="menu-divider"></div>
+      <nav class="menu-nav">
+        <button class="menu-btn primary" id="btn-play"      data-i18n="menu_play">▶ INITIALIZE TEST</button>
+        <button class="menu-btn"         id="btn-infinite"  data-i18n="menu_infinite">◈ INFINITE CHAMBERS</button>
+        <!-- AR button shown only when WebXR is available -->
+        <button class="menu-btn"         id="ar-entry-btn">◈ PLAY IN AR</button>
+        <button class="menu-btn"         id="btn-editor">⬡ LEVEL EDITOR</button>
+        <button class="menu-btn"         id="btn-settings">⚙ SETTINGS</button>
+      </nav>
+      <div id="ar-not-supported" style="display:none;font-size:9px;letter-spacing:1px;color:#5a5a72;text-align:center;padding:4px 0;">
+        AR requires HTTPS + Chrome on Android or Safari on iOS 15+
+      </div>
+      <div class="system-info">
+        <span>SYS: APERTURE SCIENCE v2.0</span>
+        <span>STATUS: <span class="blink">OPERATIONAL</span></span>
+        <span data-i18n="menu_chambers">CHAMBERS: 10</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       AR ENTRY OVERLAY
+  ════════════════════════════════════════════════════════ -->
+  <div id="ar-overlay" class="hidden" style="display:none;position:fixed;inset:0;z-index:150;background:rgba(8,8,11,0.97);align-items:center;justify-content:center;">
+    <div class="ar-panel">
+      <div class="ar-icon">◈</div>
+      <h2 class="ar-title">AR MODE</h2>
+      <p class="ar-subtitle">MIXED REALITY · WEBXR</p>
+
+      <p class="ar-desc">
+        Place the test chamber on any flat surface in your environment.
+        Use pinch to scale and drag to rotate the level.
+      </p>
+
+      <div class="ar-requirements">
+        <div class="ar-req-row">
+          <span>WEBXR IMMERSIVE-AR</span>
+          <span id="ar-req-webxr" class="ar-req-check">CHECKING…</span>
+        </div>
+        <div class="ar-req-row">
+          <span>HIT-TEST SURFACE DETECTION</span>
+          <span id="ar-req-hittest" class="ar-req-check">CHECKING…</span>
+        </div>
+        <div class="ar-req-row">
+          <span>HTTPS / SECURE CONTEXT</span>
+          <span class="ar-req-ok">✓</span>
+        </div>
+      </div>
+
+      <div id="ar-error" class="ar-error"></div>
+
+      <div class="ar-btn-group">
+        <button class="menu-btn primary" id="ar-start-btn">▶ ENTER AR</button>
+        <button class="menu-btn"         id="ar-back-btn" >◂ BACK TO MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LEVEL SELECT
+  ════════════════════════════════════════════════════════ -->
+  <div id="level-select-overlay" class="overlay hidden">
+    <div class="panel level-select-panel">
+      <div class="panel-header">
+        <span data-i18n="ls_title">SELECT TEST CHAMBER</span>
+        <button class="panel-close" id="btn-close-level-select">✕</button>
+      </div>
+      <button class="menu-btn primary full-w" id="btn-play-first" data-i18n="ls_start_first">▶ START FROM CHAMBER 01</button>
+      <div class="menu-divider"></div>
+      <div id="level-select-grid" class="level-select-grid"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SETTINGS
+  ════════════════════════════════════════════════════════ -->
+  <div id="settings-overlay" class="overlay hidden">
+    <div class="panel settings-panel">
+      <div class="panel-header">
+        <span>⚙ APERTURE SETTINGS</span>
+        <button class="panel-close" id="btn-close-settings">✕</button>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">AUDIO EFFECTS</label>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-audio" checked/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">AMICA VOICE (TTS)</label>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-tts" checked/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">DIALOGUE PANEL</label>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-dialogue" checked/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">MINIMAP</label>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-minimap" checked/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">SHADOWS</label>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-shadows" checked/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">ORBIT CAMERA</label>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-orbit"/><span class="toggle-slider"></span></label>
+      </div>
+      <!-- Control scheme -->
+      <div class="settings-row settings-row-stacked">
+        <label class="settings-label">CONTROL SCHEME</label>
+        <div class="picker-row" id="scheme-picker-row">
+          <button class="theme-btn active" id="scheme-classic" data-scheme="classic">CLASSIC WASD</button>
+          <button class="theme-btn"        id="scheme-tank"    data-scheme="tank">TANK (FWD/TURN)</button>
+        </div>
+      </div>
+
+      <!-- Language picker -->
+      <div class="settings-row settings-row-stacked">
+        <label class="settings-label" data-i18n="settings_lang">LANGUAGE</label>
+        <div class="picker-row" id="lang-picker-row"></div>
+      </div>
+
+      <!-- Visual theme picker -->
+      <div class="settings-row settings-row-stacked">
+        <label class="settings-label" data-i18n="settings_theme">VISUAL THEME</label>
+        <div class="picker-row" id="theme-picker-row"></div>
+      </div>
+
+      <div class="menu-divider"></div>
+      <div class="controls-ref">
+        <div class="ctrl-title">CONTROLS</div>
+        <div class="ctrl-row"><span>MOVE</span><span>WASD / ARROWS</span></div>
+        <div class="ctrl-row"><span>PORTAL A</span><span>Q</span></div>
+        <div class="ctrl-row"><span>PORTAL B</span><span>R</span></div>
+        <div class="ctrl-row"><span>ADVANCE DIALOGUE</span><span>SPACE</span></div>
+        <div class="ctrl-row"><span>TOGGLE MINIMAP</span><span>M</span></div>
+        <div class="ctrl-row"><span>RESTART CHAMBER</span><span>F1</span></div>
+        <div class="ctrl-row"><span>MENU</span><span>ESC</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       GAMEPLAY HUD
+  ════════════════════════════════════════════════════════ -->
+  <div id="hud" class="hud hidden">
+    <div class="hud-top">
+      <div class="hud-cell">TEST <span id="level-num">01</span></div>
+      <div class="hud-cell center" id="hud-title">CHAMBER LOADING…</div>
+      <div class="hud-cell right">STEPS: <span id="step-count">0</span></div>
+    </div>
+    <div class="portal-indicators">
+      <div class="portal-dot" id="portal-a">◉ A</div>
+      <div class="portal-dot" id="portal-b">◉ B</div>
+    </div>
+    <div class="hud-hint" id="hud-hint"></div>
+    <div class="controls-legend">
+      <span>WASD · MOVE</span>
+      <span>Q · PORTAL A</span>
+      <span>R · PORTAL B</span>
+      <span>SPACE · DIALOGUE</span>
+      <span>M · MAP</span>
+      <span>ESC · MENU</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       WIN / FAIL
+  ════════════════════════════════════════════════════════ -->
+  <div id="win-overlay" class="overlay hidden">
+    <div class="result-content win-content">
+      <div class="result-icon win-icon">✓</div>
+      <h2 class="result-title win-title" data-i18n="win_title">TEST COMPLETE</h2>
+      <p class="result-subtitle" data-i18n="win_subtitle">Chamber protocol satisfied.</p>
+      <div class="win-stats">
+        <div class="stat-block"><div class="stat-val" id="win-steps">0</div><div class="stat-lbl">STEPS</div></div>
+        <div class="stat-divider"></div>
+        <div class="stat-block"><div class="stat-val" id="win-portals">0</div><div class="stat-lbl">PORTALS USED</div></div>
+      </div>
+      <div class="result-actions">
+        <button class="menu-btn primary" id="btn-next-level" data-i18n="win_next">NEXT CHAMBER ▶</button>
+        <button class="menu-btn"         id="btn-menu-from-win" data-i18n="win_menu">◂ MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="fail-overlay" class="overlay hidden">
+    <div class="result-content fail-content">
+      <div class="result-icon fail-icon">✗</div>
+      <h2 class="result-title fail-title" data-i18n="fail_title">TEST FAILED</h2>
+      <p class="result-subtitle" id="fail-message">Unexpected result.</p>
+      <div class="result-actions">
+        <button class="menu-btn primary" id="btn-retry">↺ RETRY</button>
+        <button class="menu-btn"         id="btn-menu-from-fail" data-i18n="fail_menu">◂ MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LEVEL EDITOR
+  ════════════════════════════════════════════════════════ -->
+  <div id="editor-overlay" class="overlay hidden">
+    <div class="editor-layout">
+      <div class="editor-sidebar">
+        <div class="editor-logo">⬡ EDITOR</div>
+        <div class="editor-section-title">TOOLS</div>
+        <div class="editor-tools">
+          <button class="tool-btn active" id="tool-paint">✎ PAINT</button>
+          <button class="tool-btn"        id="tool-erase">◻ ERASE</button>
+          <button class="tool-btn"        id="tool-fill" >▣ FILL</button>
+        </div>
+        <div class="editor-section-title">TILES</div>
+        <div class="tile-palette" id="tile-palette"></div>
+        <div class="editor-section-title">GRID SIZE</div>
+        <label class="editor-label">W <input type="number" id="grid-w" value="10" min="4" max="24"/></label>
+        <label class="editor-label">H <input type="number" id="grid-h" value="10" min="4" max="24"/></label>
+        <button class="tool-btn full" id="btn-resize-grid">⊞ RESIZE</button>
+        <div class="editor-section-title">LASER DIR</div>
+        <div class="laser-dir-picker">
+          <button class="dir-btn active" data-dx="1"  data-dz="0" >→</button>
+          <button class="dir-btn"        data-dx="-1" data-dz="0" >←</button>
+          <button class="dir-btn"        data-dx="0"  data-dz="1" >↓</button>
+          <button class="dir-btn"        data-dx="0"  data-dz="-1">↑</button>
+        </div>
+        <div class="editor-section-title">FILE</div>
+        <button class="tool-btn full"        id="btn-test-level"  >▶ TEST</button>
+        <button class="tool-btn full"        id="btn-export-level">↓ EXPORT JSON</button>
+        <button class="tool-btn full"        id="btn-import-level">↑ IMPORT JSON</button>
+        <input  type="file" id="import-file-input" accept=".json" style="display:none"/>
+        <button class="tool-btn full"        id="btn-clear-level" >⌫ CLEAR</button>
+        <button class="tool-btn full danger" id="btn-close-editor">✕ CLOSE</button>
+      </div>
+      <div class="editor-canvas-wrap">
+        <div class="editor-canvas-scroll" id="editor-canvas-scroll">
+          <canvas id="editor-canvas"></canvas>
+        </div>
+        <div class="editor-statusbar">
+          <span id="editor-status">Ready — select a tile and paint on the grid</span>
+          <span id="editor-cursor-pos"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       WebXR DOM OVERLAY
+       ─────────────────────────────────────────────────────
+       This element is the container passed to the WebXR
+       dom-overlay feature. Everything inside it remains
+       visible as a 2D overlay on top of the AR camera feed.
+       MUST be a direct child of <body>.
+  ════════════════════════════════════════════════════════ -->
+  <div id="ar-dom-overlay" style="display:none;position:fixed;inset:0;pointer-events:none;z-index:500;">
+
+    <!-- AR HUD — shown only while inside an AR session -->
+    <div id="ar-hud" class="hidden" style="display:none;">
+
+      <!-- Top bar: badge + status message -->
+      <div class="ar-hud-top">
+        <div class="ar-badge">
+          <div class="ar-badge-dot"></div>
+          AR LIVE
+        </div>
+        <span id="ar-status">Searching for surface…</span>
+      </div>
+
+      <!-- Scanning animation (visible before placement) -->
+      <div id="ar-scan-hint" class="ar-scan-hint">
+        <div class="ar-scan-ring"></div>
+        <div class="ar-scan-ring"></div>
+        <div class="ar-scan-ring"></div>
+      </div>
+
+      <!-- Bottom control bar -->
+      <div class="ar-hud-bottom">
+
+        <!-- Transform controls (scale + rotate) -->
+        <div class="ar-transform-row">
+          <button class="ar-icon-btn" id="ar-btn-scale-down" title="Scale down">−</button>
+          <button class="ar-icon-btn" id="ar-btn-rot-left"   title="Rotate left">↺</button>
+          <button class="ar-icon-btn" id="ar-btn-rot-right"  title="Rotate right">↻</button>
+          <button class="ar-icon-btn" id="ar-btn-scale-up"   title="Scale up">+</button>
+        </div>
+
+        <!-- Primary actions -->
+        <div class="ar-action-row">
+          <!-- Place button (shown before placement) -->
+          <button class="ar-action-btn primary" id="ar-btn-place">
+            ◉ PLACE HERE
+          </button>
+          <!-- Reset button (shown after placement) -->
+          <button class="ar-action-btn" id="ar-btn-reset" style="display:none">
+            ↺ REPOSITION
+          </button>
+          <!-- Exit AR -->
+          <button class="ar-action-btn danger" id="ar-btn-exit">
+            ✕ EXIT AR
+          </button>
+        </div>
+      </div>
+
+    </div><!-- #ar-hud -->
+
+    <!-- Touch D-pad: moved to <body> by uiManager on touch devices, stays here for AR -->
+    <!-- Touch controls: arrow pad (bottom-left) + portal buttons (bottom-right) -->
+    <!-- AR win toast — shown instead of win-overlay when in AR -->
+    <div id="ar-win-toast" style="
+      display:none; position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%); z-index:910;
+      flex-direction:column; gap:14px; align-items:center;
+      background:rgba(8,8,11,.96); border:1px solid #00ff88;
+      border-top:3px solid #00ff88; padding:28px 36px; min-width:220px;
+      font-family:var(--font-mono); pointer-events:auto; text-align:center;">
+      <div style="font-size:13px;letter-spacing:3px;color:#00ff88;">✓ TEST COMPLETE</div>
+      <div id="ar-win-stats" style="font-size:9px;letter-spacing:1.5px;color:#5a5a72;"></div>
+      <button id="ar-win-next" style="width:100%;padding:11px;background:transparent;border:1px solid #00ff88;color:#00ff88;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">NEXT CHAMBER ▶</button>
+      <button id="ar-win-retry" style="width:100%;padding:11px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">↺ RETRY</button>
+      <button id="ar-win-menu" style="width:100%;padding:11px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">✕ EXIT AR</button>
+    </div>
+
+    <!-- AR pause menu -->
+    <div id="ar-menu-panel" style="
+      display:none;position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);z-index:900;
+      flex-direction:column;gap:12px;align-items:center;
+      background:rgba(8,8,11,.95);border:1px solid #ff6a00;
+      border-top:3px solid #ff6a00;padding:28px 36px;min-width:220px;
+      font-family:var(--font-mono);pointer-events:auto;">
+      <div style="font-size:11px;letter-spacing:3px;color:#ff6a00;">AR PAUSED</div>
+      <button id="ar-menu-resume" style="width:100%;padding:10px;background:transparent;border:1px solid #ff6a00;color:#ff6a00;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">▶ RESUME</button>
+      <button id="ar-menu-retry"  style="width:100%;padding:10px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">↺ RETRY CHAMBER</button>
+      <button id="ar-menu-reset"  style="width:100%;padding:10px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">⊕ REPOSITION BOARD</button>
+      <button id="ar-menu-exit"   style="width:100%;padding:10px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">✕ EXIT AR</button>
+    </div>
+
+  </div><!-- #ar-dom-overlay -->
+
+  <!-- ── Camera / AR buttons (body-level: always visible during gameplay) ── -->
+  <button id="btn-fullscreen" title="Fullscreen">⛶</button>
+  <button id="btn-orbit"      title="Orbit / iso camera">⊙</button>
+  <button id="btn-enter-ar"   title="Enter AR mode">◈</button>
+
+  <!-- ── Touch D-pad: arrows bottom-left, portals bottom-right ──────── -->
+  <div id="touch-dpad-arrows">
+    <div class="dpad-row"><button id="dpad-up">▲</button></div>
+    <div class="dpad-row">
+      <button id="dpad-left">◀</button>
+      <span class="dpad-gap"></span>
+      <button id="dpad-right">▶</button>
+    </div>
+    <div class="dpad-row"><button id="dpad-down">▼</button></div>
+  </div>
+  <div id="touch-dpad-portals">
+    <button id="dpad-portal-a">A</button>
+    <button id="dpad-portal-b">B</button>
+  </div>
+  <div id="touch-dpad" style="display:none;"></div>
+
+  <!-- BabylonJS render target (lowest z-index) -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCRIPTS  (load order = dependency order)
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Utilities (i18n + themes must load before constants so they can patch CONSTANTS colors) -->
+  <script src="src/utils/i18n.js?v=9ba59a39"></script>
+  <script src="src/utils/themes.js?v=1365cb12"></script>
+  <script src="src/utils/constants.js?v=6e041e81"></script>
+  <script src="src/utils/eventBus.js?v=5f27b48d"></script>
+
+  <!-- Game data -->
+  <script src="src/game/tileTypes.js?v=952f05d3"></script>
+  <script src="src/game/levels.js?v=512893b6"></script>
+
+  <!-- Core systems -->
+  <script src="src/game/audio.js?v=36880a5e"></script>
+  <script src="src/game/amica.js?v=64eb4b90"></script>
+  <script src="src/game/renderer.js?v=3f2ea175"></script>
+  <script src="src/game/particles.js?v=dc4f208d"></script>
+  <script src="src/game/physics.js?v=5a6b68dc"></script>
+  <script src="src/game/portalGun.js?v=ac94a9e8"></script>
+  <script src="src/game/player.js?v=7ae32a96"></script>
+  <script src="src/game/laser.js?v=a85a81bb"></script>
+  <script src="src/game/minimap.js?v=1ec153ef"></script>
+  <script src="src/game/arManager.js?v=cc5ac498"></script>
+
+  <!-- Editor -->
+  <script src="src/editor/levelEditor.js?v=40515590"></script>
+
+  <!-- UI layer -->
+  <script src="src/ui/dialoguePanel.js?v=243dac69"></script>
+  <script src="src/ui/dialogueScript.js?v=b998d810"></script>
+  <script src="src/ui/uiManager.js?v=401737fc"></script>
+
+  <!-- 3D model loader (optional — gracefully skips missing .glb files) -->
+  <script src="src/game/assetLoader.js?v=5fe167d9"></script>
+
+  <!-- Game logic (depends on all above) -->
+  <script src="src/game/levelGenerator.js?v=52994473"></script>
+  <script src="src/game/gameLogic.js?v=c101163b"></script>
+
+  <!-- Entry point -->
+  <script src="src/ui/splashScreen.js?v=a27b7ecd"></script>
+  <script src="src/main.js?v=54bfa051"></script>
+
+</body>
+</html>
