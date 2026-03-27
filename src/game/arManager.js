@@ -51,8 +51,8 @@ const ARManager = (() => {
   // Board-move accumulator (applied per-frame via scene observer)
   let _boardMoveObs  = null;
 
-  // Scale: 0.30m real / 24 world-units
-  const AR_SCALE = 0.30 / 24;
+  // Scale: 1.00m real / 24 world-units
+  const AR_SCALE = 1.00 / 24;
 
   // 3D BabylonJS GUI menu (floats in world space, visible in AR headset)
   let _guiTexture   = null;   // AdvancedDynamicTexture for 3D plane
@@ -196,6 +196,7 @@ const ARManager = (() => {
     // Show scan hint
     document.getElementById('ar-scan-hint')?.classList.add('visible');
 
+    document.body.classList.add('ar-active');
     EventBus.emit('ar:entered');
   }
 
@@ -244,6 +245,7 @@ const ARManager = (() => {
     _reticlePose = null;
     if (_boardMoveObs) { try { _scene.onBeforeRenderObservable.remove(_boardMoveObs); } catch(_){} _boardMoveObs = null; }
 
+    document.body.classList.remove('ar-active');
     EventBus.emit('ar:exited');
   }
 
@@ -322,10 +324,6 @@ const ARManager = (() => {
 
     _boardRoot.position.copyFrom(pos);
     // Face the board toward the camera
-    _boardRoot.rotation.y = Math.atan2(
-      cam.globalPosition.x - pos.x,
-      cam.globalPosition.z - pos.z
-    );
     _boardRoot.setEnabled(true);
     _placed = true;
     _reticle?.setEnabled(false);

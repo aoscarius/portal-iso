@@ -421,7 +421,14 @@ body::before {
   display: flex; flex-direction: column; gap: 6px;
   padding: 14px 10px 14px;
   overflow-y: auto;
+  transition: width 0.4s ease-in-out;
+  /* transform: translateX(0); */
 }
+.editor-sidebar.hidden {
+    overflow-y: hidden;
+    width: 0px;
+    padding: 0px;
+  }
 .editor-logo {
   font-family: var(--font-ui); font-size: 18px; font-weight: 700;
   color: var(--portal-b); letter-spacing: 4px;
@@ -456,6 +463,22 @@ body::before {
   background: var(--portal-b-dim); color: var(--portal-b);
   box-shadow: inset 0 0 6px rgba(255,106,0,0.1);
 }
+
+/* Editor buttons */
+.editor-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+}
+.btn-toogle {
+  aspect-ratio: 1 / 1; height: 40px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  padding: 7px; background: var(--bg-panel);
+  border: 1px solid var(--border); color: var(--text-dim); border-left: none;
+  font-size: 14px; cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.btn-toogle:hover { border-color: var(--portal-b); color: var(--text-primary); }
 
 /* Tool buttons */
 .editor-tools { display: flex; gap: 4px; }
@@ -506,6 +529,7 @@ body::before {
   flex: 1; overflow: auto;
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
+  padding-left: 200px;
 }
 #editor-canvas {
   cursor: crosshair;
@@ -861,4 +885,31 @@ body.theme-neon .pdot.active-a {
   .menu-content   { min-width: 380px; padding: 52px 72px; }
   .panel          { min-width: 440px; }
   .result-content { min-width: 380px; padding: 52px 72px; }
+}
+/* ═══════════════════════════════════════════════════════════
+   MOBILE LAYOUT — safe areas, dpad clearance, AR mode
+   ════════════════════════════════════════════════════════ */
+
+/* Minimap: keep away from dpad on mobile */
+@media (max-width: 600px), (pointer: coarse) {
+  #minimap-canvas {
+    top: 112px !important;
+    bottom: auto !important;
+    right: 8px !important;
+  }
+}
+
+/* AR active: special layout — game board in camera, everything must be
+   positioned for camera passthrough (no traditional HUD bottom zones) */
+body.ar-active #dialogue-panel.visible {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 140px) !important;
+}
+body.ar-active #touch-dpad-arrows,
+body.ar-active #touch-dpad-portals {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 140px + 120px) !important;
+}
+
+/* HUD top bar: respect safe area top (notch) */
+.hud-top {
+  padding-top: max(8px, env(safe-area-inset-top, 8px)) !important;
 }

@@ -88,6 +88,10 @@ const LevelEditor = (() => {
   }
 
   function _attachSidebarEvents() {
+    // Toogle button
+    document.getElementById('btn-toggle')?.addEventListener('click', () => {
+        document.getElementById('cnt-sidebar').classList.toggle('hidden');
+    });
     // Tool buttons
     ['paint','erase','fill'].forEach(tool => {
       document.getElementById(`tool-${tool}`)?.addEventListener('click', () => {

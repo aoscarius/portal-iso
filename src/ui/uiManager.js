@@ -43,6 +43,7 @@ const UIManager = (() => {
     Minimap.setVisible(false);
     DialoguePanel?.clear();
     document.body.classList.remove('dialogue-open');
+    _showTouchControls(false);
     _relabel();   // Refresh all text with current language
   }
 
@@ -57,11 +58,17 @@ const UIManager = (() => {
     if (typeof ARManager !== 'undefined' && ARManager.isReady?.()) {
       document.getElementById('btn-enter-ar')?.classList.add('cam-visible');
     }
+    // Show touch D-pad when on a touch device and outside AR
+    if (_isTouchDevice()) _showTouchControls(true);
   }
 
   function showWin({ steps, portals, isLast }) {
     DialoguePanel?.clear();
     Minimap.setVisible(false);
+    document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
+    document.getElementById('btn-orbit')?.classList.remove('cam-visible');
+    document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
+    _showTouchControls(false);
 
     // In AR: show toast inside ar-dom-overlay instead of blocking overlay
     if (typeof ARManager !== 'undefined' && ARManager.isActive?.()) {
@@ -87,13 +94,21 @@ const UIManager = (() => {
     DialoguePanel?.clear();
     document.getElementById('fail-message').textContent = message;
     Minimap.setVisible(false);
+    document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
+    document.getElementById('btn-orbit')?.classList.remove('cam-visible');
+    document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
+    _showTouchControls(false);
+
     _show('fail-overlay');
   }
 
   function showEditor() {
     _show('editor-overlay');
     document.getElementById('hud').classList.add('hidden');
-    Minimap.setVisible(false);
+    document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
+    document.getElementById('btn-orbit')?.classList.remove('cam-visible');
+    document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
+    _showTouchControls(false);
     LevelEditor.init();
   }
 
@@ -340,8 +355,7 @@ const UIManager = (() => {
     // Camera buttons shown when game panel is shown
     // shown via showGame() call
 
-    // Show touch D-pad when on a touch device and outside AR
-    if (_isTouchDevice()) _showTouchControls(true);
+    // D-pad is shown/hidden per screen via showGame/showMainMenu/showEditor
     document.getElementById('btn-play')?.addEventListener('click', () => {
       _showPanel('level-select-overlay');
       _buildLevelSelect();
