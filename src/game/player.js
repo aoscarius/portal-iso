@@ -297,9 +297,9 @@ const Player = (() => {
     if (result.pushCube) {
       const { fromX, fromZ, toX, toZ } = result.pushCube;
       Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR);
-      Physics.setTile(toX,   toZ,   CONSTANTS.TILE.CUBE);
       Renderer.moveCubeMesh(fromX, fromZ, toX, toZ);
       EventBus.emit('cube:moved', { fromX, fromZ, toX, toZ });
+      Physics.setTile(toX, toZ, CONSTANTS.TILE.CUBE);
     }
     _commitMove(nx, nz);
   }

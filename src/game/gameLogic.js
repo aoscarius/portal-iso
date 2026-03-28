@@ -262,7 +262,6 @@ const GameLogic = (() => {
     if (Physics.getTile(toX, toZ) === CONSTANTS.TILE.BUTTON) {
       buttonStates[`${toX}_${toZ}`] = false; // Allow re-trigger
       _pressButton(toX, toZ);
-      console.log("cuuuuuuuuuuuuuuuuuuuuuuuuuuube");
       AMICA.sayLine('cube_on_button', 800);
     }
 

@@ -340,7 +340,7 @@ const Renderer = (() => {
     };
 
     // Try GLB floor model for FLOOR and PLAYER tiles; use procedural for rest
-    const useGlbFloor = (tileId === T.FLOOR || tileId === T.PLAYER || tileId === T.EXIT || tileId === T.HAZARD)
+    const useGlbFloor = (tileId === T.FLOOR || tileId === T.PLAYER || tileId === T.CUBE)
                         && AssetLoader.isLoaded(T.FLOOR);
     const useGlb = (tileId === T.EXIT || tileId === T.HAZARD)
                     && AssetLoader.isLoaded(tileId);
@@ -398,7 +398,7 @@ const Renderer = (() => {
       let cubeRoot;
       if (glb) {
         glb.root.position = pos.clone();
-        glb.root.position.y = 0;
+        glb.root.position.y = CONSTANTS.TILE_SIZE * 0.27;
         shadowGenerator.addShadowCaster(glb.root);
         glb.root.getChildMeshes().forEach(m => shadowGenerator.addShadowCaster(m));
         cubeRoot = glb.root;
