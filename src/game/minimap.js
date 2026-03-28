@@ -68,7 +68,7 @@ const Minimap = (() => {
     [CONSTANTS.TILE.PLAYER]:      '#1e1e28',
     [CONSTANTS.TILE.EXIT]:        '#00ff88',
     [CONSTANTS.TILE.BUTTON]:      '#ffdd00',
-    [CONSTANTS.TILE.DOOR]:        '#ff4444',
+    [CONSTANTS.TILE.DOOR]:        '#4457ff',
     [CONSTANTS.TILE.CUBE]:        '#aaaacc',
     [CONSTANTS.TILE.HAZARD]:      '#ff2244',
     [CONSTANTS.TILE.PORTAL_WALL]: '#3a3a50',
