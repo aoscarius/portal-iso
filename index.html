@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="src/ui/ar.css?v=92cab65b" />
   <style>
     /* ── Camera buttons ────────────────────────────────── */
-    #btn-enter-ar, #btn-fullscreen, #btn-orbit {
+    #btn-menu-from-game, #btn-fullscreen, #btn-orbit, #btn-enter-ar {
       display: none;
       position: fixed; z-index: 600;
       width: 38px; height: 38px; top: 6px;
@@ -32,9 +32,11 @@
       transition: color .15s, border-color .15s;
       touch-action: manipulation;
     }
-    #btn-fullscreen { top: 54px; right: 8px; }
-    #btn-orbit      { top: 54px; right: 54px; }
-    #btn-enter-ar   { top: 54px; right: 100px; }
+    #btn-menu-from-game  { top: 54px; right: 8px; }
+    #btn-fullscreen { top: 54px; right: 54px; }
+    #btn-orbit      { top: 54px; right: 100px; }
+    #btn-enter-ar   { top: 54px; right: 146px; }
+    #btn-menu-from-game:hover,
     #btn-fullscreen:hover,
     #btn-orbit:hover,
     #btn-enter-ar:hover { color: #e2e2ee; border-color: #ff6a00; }
@@ -490,15 +492,17 @@
         </div>
         <div class="editor-section-title">FILE</div>
         <button class="tool-btn full"        id="btn-test-level"  >▶ TEST</button>
-        <button class="tool-btn full"        id="btn-export-level">↓ EXPORT JSON</button>
-        <button class="tool-btn full"        id="btn-import-level">↑ IMPORT JSON</button>
-        <input  type="file" id="import-file-input" accept=".json" style="display:none"/>
+        <button class="tool-btn full"        id="btn-export-level">↓ EXPORT LEVEL</button>
+        <button class="tool-btn full"        id="btn-import-level">↑ IMPORT LEVEL</button>
+        <input  type="file" id="import-file-input" accept=".js" style="display:none"/>
         <button class="tool-btn full"        id="btn-clear-level" >⌫ CLEAR</button>
         <button class="tool-btn full danger" id="btn-close-editor">✕ CLOSE</button>
       </div>
       <div class="editor-canvas-wrap">
         <div class="editor-header">
-          <button class="btn-toogle" id="btn-toggle">☰</button>
+          <button class="btn-toggle" id="btn-toggle">☰</button>
+          <span class="editor-header-space"></span>
+          <button class="btn-exit" id="btn-exit">✕</button>
         </div>
         
         <div class="editor-canvas-scroll" id="editor-canvas-scroll">
@@ -606,9 +610,10 @@
   </div><!-- #ar-dom-overlay -->
 
   <!-- ── Camera / AR buttons (body-level: always visible during gameplay) ── -->
-  <button id="btn-fullscreen" title="Fullscreen">⛶</button>
-  <button id="btn-orbit"      title="Orbit / iso camera">⊙</button>
-  <button id="btn-enter-ar"   title="Enter AR mode">◈</button>
+  <button id="btn-menu-from-game" title="Exit">✕</button>
+  <button id="btn-fullscreen"     title="Fullscreen">⛶</button>
+  <button id="btn-orbit"          title="Orbit / iso camera">⊙</button>
+  <button id="btn-enter-ar"       title="Enter AR mode">◈</button>
 
   <!-- ── Touch D-pad: arrows bottom-left, portals bottom-right ──────── -->
   <div id="touch-dpad-arrows">

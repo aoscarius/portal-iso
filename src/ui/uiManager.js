@@ -36,6 +36,7 @@ const UIManager = (() => {
 
   function showMainMenu() {
     _show('main-menu');
+    document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
@@ -52,6 +53,7 @@ const UIManager = (() => {
      'settings-overlay','level-select-overlay'].forEach(id => _hide(id));
     document.getElementById('hud').classList.remove('hidden');
     Minimap.setVisible(true);
+    document.getElementById('btn-menu-from-game')?.classList.add('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.add('cam-visible');
     document.getElementById('btn-orbit')?.classList.add('cam-visible');
     // Show AR button only if AR is supported
@@ -65,6 +67,7 @@ const UIManager = (() => {
   function showWin({ steps, portals, isLast }) {
     DialoguePanel?.clear();
     Minimap.setVisible(false);
+    document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
@@ -94,6 +97,7 @@ const UIManager = (() => {
     DialoguePanel?.clear();
     document.getElementById('fail-message').textContent = message;
     Minimap.setVisible(false);
+    document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
@@ -105,6 +109,7 @@ const UIManager = (() => {
   function showEditor() {
     _show('editor-overlay');
     document.getElementById('hud').classList.add('hidden');
+    document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
@@ -341,6 +346,12 @@ const UIManager = (() => {
 
   function bindButtons() {
     _setupFullscreen();
+
+    // Menu button (visible during gameplay)
+    // Orbit camera toggle (visible during gameplay)
+    document.getElementById('btn-menu-from-game')?.addEventListener('click', () => {
+      EventBus.emit('game:to-menu');
+    });
 
     // Orbit camera toggle (visible during gameplay)
     document.getElementById('btn-orbit')?.addEventListener('click', () => {

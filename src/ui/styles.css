@@ -45,6 +45,7 @@ html, body {
 }
 
 /* Camera buttons become visible when game is active */
+#btn-menu-from-game.cam-visible,
 #btn-fullscreen.cam-visible,
 #btn-orbit.cam-visible,
 #btn-enter-ar.cam-visible { display: block; }
@@ -465,20 +466,32 @@ body::before {
 }
 
 /* Editor buttons */
-.editor-header{
+.editor-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 40px;
 }
-.btn-toogle {
+.editor-header-space {
+  height: 40px; width: 100%;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.btn-toggle {
   aspect-ratio: 1 / 1; height: 40px;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   padding: 7px; background: var(--bg-panel);
   border: 1px solid var(--border); color: var(--text-dim); border-left: none;
   font-size: 14px; cursor: pointer; transition: all 0.15s; text-align: center;
 }
-.btn-toogle:hover { border-color: var(--portal-b); color: var(--text-primary); }
+.btn-toggle:hover { border-color: var(--portal-b); color: var(--text-primary); border-left: 1px solid var(--portal-b); }
+.btn-exit {
+  aspect-ratio: 1 / 1; height: 40px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  padding: 7px; background: var(--bg-panel);
+  border: 1px solid var(--border); color: var(--text-dim); border-right: none;
+  font-size: 14px; cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.btn-exit:hover { border-color: var(--portal-b); color: var(--text-primary); border-right: 1px solid var(--portal-b); }
 
 /* Tool buttons */
 .editor-tools { display: flex; gap: 4px; }
@@ -529,7 +542,9 @@ body::before {
   flex: 1; overflow: auto;
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
-  padding-left: 200px;
+}
+@media (max-width: 600px), (pointer: coarse) {
+  .editor-canvas-scroll { padding-left: 150px; }
 }
 #editor-canvas {
   cursor: crosshair;

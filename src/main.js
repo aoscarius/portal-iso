@@ -34,6 +34,12 @@
     });
   } catch (_) { /* missing models — fallback to procedural */ }
 
+  try {
+    await LevelLoader.load((loaded, total, path) => {
+      SplashScreen.setProgress(loaded, total, path);
+    });
+  } catch (_) { /* missing levels - skip */ }
+
   SplashScreen.hide();
 
   // Init AR infrastructure (non-blocking; does not enter XR)

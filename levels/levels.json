@@ -1,0 +1,16 @@
+{
+  "description": "Portal ISO - Levels Manifest",
+  "comment": "List of level files here in play order. Each file populate LEVELS and DIALOGUE_SCRIPTS array.",
+  "files": [
+    "levels/level_1.js",
+    "levels/level_2.js",
+    "levels/level_3.js",
+    "levels/level_4.js",
+    "levels/level_5.js",
+    "levels/level_6.js",
+    "levels/level_7.js",
+    "levels/level_8.js",
+    "levels/level_9.js",
+    "levels/level_10.js"
+  ]
+}
