@@ -74,6 +74,7 @@ const Minimap = (() => {
     [CONSTANTS.TILE.PORTAL_WALL]: '#3a3a50',
     [CONSTANTS.TILE.EMITTER]:     '#ff6a00',
     [CONSTANTS.TILE.RECEIVER]:    '#00ccff',
+    [CONSTANTS.TILE.MOVABLE]:     '#5a3a1a',
   };
 
   function render() {
@@ -137,7 +138,7 @@ const Minimap = (() => {
     ctx.fillText(label, gx * CELL + CELL / 2, gz * CELL + CELL / 2);
   }
 
-  // Expose a method to update grid state (when doors open, cubes move)
+  // Expose a method to update grid state (when doors open, cubes/movable move)
   function updateGrid(grid) {
     if (!currentLevel) return;
     currentLevel = { ...currentLevel, grid };

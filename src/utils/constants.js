@@ -55,6 +55,7 @@ const CONSTANTS = {
     PORTAL_WALL:  9,  // Wall surface that accepts portal shots
     EMITTER:     10,  // Laser emitter
     RECEIVER:    11,  // Laser receiver target
+    MOVABLE:     12,  // Weighted Glass Block (pushable)
   },
 
   // ── Direction vectors (grid movement) ────────────────────

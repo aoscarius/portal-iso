@@ -42,7 +42,7 @@ const LaserSystem = (() => {
 
   /**
    * Rebuild all laser beams based on current portal and grid state.
-   * Called every time the game state changes (portal placed, cube moved).
+   * Called every time the game state changes (portal placed, cube moved, movable moved).
    */
   function update() {
     if (!levelData?.lasers) return;
@@ -106,8 +106,9 @@ const LaserSystem = (() => {
         return key === targetReceiverId;
       }
 
-      // Hit any solid — stop
-      if (isSolid(tile)) {
+      // Hit any solid included player— stop
+      const pPos = Player.getPosition();
+      if (isSolid(tile) || (pPos.x === nx && pPos.z === nz)) {
         _drawSegment(pos, { x: nx, z: nz });
         return false;
       }

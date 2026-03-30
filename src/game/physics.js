@@ -45,14 +45,14 @@ const Physics = (() => {
    * @param {number} pz     Current player Z
    * @param {number} nx     Target X
    * @param {number} nz     Target Z
-   * @returns {{ ok: boolean, pushCube: {fromX,fromZ,toX,toZ}|null }}
+   * @returns {{ ok: boolean, pushCube: {fromX,fromZ,toX,toZ}|null, pushMovable: {fromX,fromZ,toX,toZ}|null }}
    */
   function canMoveTo(px, pz, nx, nz) {
     const tile = getTile(nx, nz);
 
-    // Solid tiles block movement
-    if (isSolid(tile)) {
-      return { ok: false, pushCube: null };
+    // Solid and non movable tiles block movement
+    if (isSolid(tile) && !isMovable(tile)) {
+      return { ok: false, pushCube: null, pushMovable: null };
     }
 
     // Cube or movable block: check if it can be pushed
@@ -63,17 +63,27 @@ const Physics = (() => {
       const cz = nz + dz;
       const behindTile = getTile(cx, cz);
 
-      if (!isSolid(behindTile) && behindTile !== CONSTANTS.TILE.CUBE) {
-        // Cube can be pushed
-        return {
-          ok: true,
-          pushCube: { fromX: nx, fromZ: nz, toX: cx, toZ: cz },
-        };
+      if (!isSolid(behindTile) && (behindTile !== CONSTANTS.TILE.CUBE || behindTile !== CONSTANTS.TILE.MOVABLE)) {
+        if (tile === CONSTANTS.TILE.CUBE) {
+          // Cube can be pushed
+          return {
+            ok: true,
+            pushCube: { fromX: nx, fromZ: nz, toX: cx, toZ: cz },
+            pushMovable: null,
+          };
+        } else if (tile === CONSTANTS.TILE.MOVABLE) {
+          // Movable can be pushed
+          return {
+            ok: true,
+            pushCube: null,
+            pushMovable: { fromX: nx, fromZ: nz, toX: cx, toZ: cz },
+          };          
+        }
       }
-      return { ok: false, pushCube: null };
+      return { ok: false, pushCube: null, pushMovable: null };
     }
 
-    return { ok: true, pushCube: null };
+    return { ok: true, pushCube: null, pushMovable: null };
   }
 
   /**
@@ -179,7 +189,7 @@ const Physics = (() => {
     if (from.x === to.x && from.z === to.z) return [];
     const target = getTile(to.x, to.z);
     // Target must be walkable (floor/exit/button/hazard/cube)
-    if (isSolid(target)) return [];
+    if (isSolid(target) && !isMovable(target)) return [];
 
     const DIRS4  = [[1,0],[-1,0],[0,1],[0,-1]];
     const visited = new Set();
@@ -196,7 +206,7 @@ const Physics = (() => {
         visited.add(key);
 
         const tile = getTile(nx, nz);
-        if (isSolid(tile)) continue;   // Wall — skip
+        if (isSolid(tile) && !isMovable(tile)) continue;   // Wall — skip
 
         const newPath = [...path, { x: nx, z: nz }];
         if (nx === to.x && nz === to.z) return newPath;

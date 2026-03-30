@@ -7,7 +7,7 @@
 //   3. Place a room inside each leaf node
 //   4. Connect sibling rooms with L-shaped corridors
 //   5. Post-process: ring border with WALL, portal walls on dead-ends,
-//      place player start, exit, buttons, doors, cubes, hazards
+//      place player start, exit, buttons, doors, cubes, movables, hazards
 //
 // Solvability guarantee:
 //   - Player can always reach the exit (flood-fill verification)
@@ -44,6 +44,7 @@ const LevelGenerator = (() => {
     PLAYER:      3, EXIT:        4, BUTTON:      5,
     DOOR:        6, CUBE:        7, HAZARD:      8,
     PORTAL_WALL: 9, EMITTER:    10, RECEIVER:   11,
+    MOVABLE:    12,
   };
 
   // ── Main entry point ──────────────────────────────────────
@@ -103,6 +104,12 @@ const LevelGenerator = (() => {
     if (difficulty >= 2) {
       const nCubes = Math.floor(rng() * 2) + 1;
       _placeCubes(grid, nCubes, floors, rng);
+    }
+
+    // Movables (difficulty >= 2)
+    if (difficulty >= 2) {
+      const nCubes = Math.floor(rng() * 2) + 1;
+      _placeMovables(grid, nCubes, floors, rng);
     }
 
     // Hazard tiles (difficulty >= 3)
@@ -316,6 +323,18 @@ const LevelGenerator = (() => {
       if (placed >= n) break;
       if (grid[f.z][f.x] === T.FLOOR) {
         grid[f.z][f.x] = T.CUBE;
+        placed++;
+      }
+    }
+  }
+
+  function _placeMovables(grid, n, floors, rng) {
+    let placed = 0;
+    const shuffled = floors.slice().sort(() => rng()-0.5);
+    for (const f of shuffled) {
+      if (placed >= n) break;
+      if (grid[f.z][f.x] === T.FLOOR) {
+        grid[f.z][f.x] = T.MOVABLE;
         placed++;
       }
     }

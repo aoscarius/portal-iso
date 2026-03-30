@@ -292,6 +292,7 @@ const Renderer = (() => {
 
     switch (tileId) {
       case T.CUBE:
+      case T.MOVABLE:
       case T.PLAYER:      // Player start is also a floor tile
       case T.EXIT:
       case T.HAZARD:
@@ -331,16 +332,17 @@ const Renderer = (() => {
     const key = `tile_${gx}_${gz}`;
 
     const colorMap = {
-      [T.FLOOR]:  CONSTANTS.COLOR_FLOOR,
-      [T.PLAYER]: CONSTANTS.COLOR_FLOOR,
-      [T.EXIT]:   CONSTANTS.COLOR_EXIT,
-      [T.BUTTON]: CONSTANTS.COLOR_BUTTON,
-      [T.HAZARD]: CONSTANTS.COLOR_HAZARD,
-      [T.CUBE]:   CONSTANTS.COLOR_CUBE,
+      [T.FLOOR]:   CONSTANTS.COLOR_FLOOR,
+      [T.PLAYER]:  CONSTANTS.COLOR_FLOOR,
+      [T.EXIT]:    CONSTANTS.COLOR_EXIT,
+      [T.BUTTON]:  CONSTANTS.COLOR_BUTTON,
+      [T.HAZARD]:  CONSTANTS.COLOR_HAZARD,
+      [T.CUBE]:    CONSTANTS.COLOR_CUBE,
+      [T.MOVABLE]: CONSTANTS.COLOR_MOVABLE,
     };
 
     // Try GLB floor model for FLOOR and PLAYER tiles; use procedural for rest
-    const useGlbFloor = (tileId === T.FLOOR || tileId === T.PLAYER || tileId === T.EXIT || tileId === T.HAZARD || tileId === T.CUBE )
+    const useGlbFloor = (tileId === T.FLOOR || tileId === T.PLAYER || tileId === T.CUBE || tileId === T.MOVABLE || tileId === T.EXIT || tileId === T.HAZARD)
                         && AssetLoader.isLoaded(T.FLOOR);
     const useGlb = (tileId === T.EXIT || tileId === T.HAZARD)
                     && AssetLoader.isLoaded(tileId);
@@ -402,7 +404,7 @@ const Renderer = (() => {
         shadowGenerator.addShadowCaster(glb.root);
         glb.root.getChildMeshes().forEach(m => shadowGenerator.addShadowCaster(m));
         cubeRoot = glb.root;
-        meshMap[`cube_glb_${gx}_${gz}`] = glb;  // store glb handle for animations
+          meshMap[`cube_glb_${gx}_${gz}`] = glb;  // store glb handle for animations
       } else {
         const cube = BABYLON.MeshBuilder.CreateBox(`cube_${gx}_${gz}`, {
           width: CONSTANTS.TILE_SIZE * 0.55,
@@ -415,7 +417,35 @@ const Renderer = (() => {
         shadowGenerator.addShadowCaster(cube);
         cubeRoot = cube;
       }
-      meshMap[`cube_obj_${gx}_${gz}`] = cubeRoot;
+        meshMap[`cube_obj_${gx}_${gz}`] = cubeRoot;
+    }
+
+    // Companion movable — try GLB first, fall back to procedural
+    if (tileId === T.MOVABLE) {
+      const glb = AssetLoader.isLoaded(T.MOVABLE)
+        ? AssetLoader.clone(T.MOVABLE, `movable_${gx}_${gz}`)
+        : null;
+      let movableRoot;
+      if (glb) {
+        glb.root.position = pos.clone();
+        glb.root.position.y = CONSTANTS.TILE_SIZE * 0.27;
+        shadowGenerator.addShadowCaster(glb.root);
+        glb.root.getChildMeshes().forEach(m => shadowGenerator.addShadowCaster(m));
+        movableRoot = glb.root;
+          meshMap[`movable_glb_${gx}_${gz}`] = glb;  // store glb handle for animations
+      } else {
+        const movable = BABYLON.MeshBuilder.CreateBox(`movable_${gx}_${gz}`, {
+          width: CONSTANTS.TILE_SIZE * 0.55,
+          height: CONSTANTS.TILE_SIZE * 0.55,
+          depth: CONSTANTS.TILE_SIZE * 0.55,
+        }, scene);
+        movable.position = pos.clone();
+        movable.position.y = CONSTANTS.TILE_SIZE * 0.27;
+        movable.material = getMaterial(CONSTANTS.COLOR_MOVABLE);
+        shadowGenerator.addShadowCaster(movable);
+        movableRoot = movable;
+      }
+        meshMap[`movable_obj_${gx}_${gz}`] = movableRoot;
     }
 
     // Exit gets a glowing ring
@@ -849,6 +879,19 @@ const Renderer = (() => {
     delete meshMap[key];
   }
 
+  /** Update companion movable position when pushed. */
+  function moveMovableMesh(fromX, fromZ, toX, toZ) {
+    const key = `movable_obj_${fromX}_${fromZ}`;
+    const mesh = meshMap[key];
+    if (!mesh) return;
+    const target = gridToWorld(toX, toZ);
+    target.y = CONSTANTS.TILE_SIZE * 0.27;
+    mesh.position = target;
+    // Re-key
+    meshMap[`movable_obj_${toX}_${toZ}`] = mesh;
+    delete meshMap[key];
+  }
+
   /**
    * Rotate the player mesh to face a grid direction.
    * Compensates for the iso camera angle (alpha = -PI/4) so the
@@ -927,7 +970,7 @@ const Renderer = (() => {
   return {
     init, buildLevel, clearLevel,
     gridToWorld, setPlayerMesh, animatePlayerTo, rotatePlayerMesh,
-    updatePortal, setDoorState, flashTile, moveCubeMesh,
+    updatePortal, setDoorState, flashTile, moveCubeMesh, moveMovableMesh,
     pressButton, releaseButton,
     getScene:  () => scene,
     getEngine: () => engine,

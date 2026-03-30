@@ -2,7 +2,8 @@
 // levels.js — Built-in test chamber definitions
 // Grid: 0=empty, 1=floor, 2=wall, 3=player, 4=exit,
 //       5=button, 6=door, 7=cube, 8=hazard,
-//       9=portal-wall, 10=emitter, 11=receiver
+//       9=portal-wall, 10=emitter, 11=receiver,
+//      12=movable
 // ============================================================
 
 let LEVELS = [];

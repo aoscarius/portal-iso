@@ -61,6 +61,7 @@ const Themes = (() => {
         button:      '#ffdd00',
         door:        '#ff4444',
         cube:        '#aaaacc',
+        movable:     '#5a3a1a',
         hazard:      '#ff2244',
         emitter:     '#ff6a00',
         receiver:    '#00ccff',
@@ -106,6 +107,7 @@ const Themes = (() => {
         button:      '#e06000',
         door:        '#cc1133',
         cube:        '#8888bb',
+        movable:     '#46465e',
         hazard:      '#cc1133',
         emitter:     '#e06000',
         receiver:    '#0077cc',
@@ -151,6 +153,7 @@ const Themes = (() => {
         button:      '#ffff00',
         door:        '#ff0055',
         cube:        '#cc88ff',
+        movable:     '#443053',
         hazard:      '#ff0055',
         emitter:     '#00ff88',
         receiver:    '#cc00ff',
@@ -189,6 +192,7 @@ const Themes = (() => {
     CONSTANTS.COLOR_BUTTON      = t.button;
     CONSTANTS.COLOR_DOOR        = t.door;
     CONSTANTS.COLOR_CUBE        = t.cube;
+    CONSTANTS.COLOR_MOVABLE     = t.movable;
     CONSTANTS.COLOR_HAZARD      = t.hazard;
     CONSTANTS.COLOR_EMITTER     = t.emitter;
     CONSTANTS.COLOR_PLAYER      = t.player;

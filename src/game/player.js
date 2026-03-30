@@ -301,6 +301,13 @@ const Player = (() => {
       EventBus.emit('cube:moved', { fromX, fromZ, toX, toZ });
       Physics.setTile(toX, toZ, CONSTANTS.TILE.CUBE);
     }
+    if (result.pushMovable) {
+      const { fromX, fromZ, toX, toZ } = result.pushMovable;
+      Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR);
+      Renderer.moveMovableMesh(fromX, fromZ, toX, toZ);
+      EventBus.emit('movable:moved', { fromX, fromZ, toX, toZ });
+      Physics.setTile(toX, toZ, CONSTANTS.TILE.MOVABLE);
+    }
     _commitMove(nx, nz);
   }
 

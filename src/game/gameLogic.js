@@ -122,6 +122,7 @@ const GameLogic = (() => {
   function _subscribeEvents() {
     _handlers.landed       = ({ x, z })        => _onPlayerLanded(x, z);
     _handlers.cube         = (d)                => _onCubeMoved(d.fromX, d.fromZ, d.toX, d.toZ);
+    _handlers.movable      = (d)                => _onMovableMoved(d.fromX, d.fromZ, d.toX, d.toZ);
     _handlers.escape       = ()                 => EventBus.emit('game:pause');
     _handlers.step         = ()                 => {
       AudioEngine.step();
@@ -150,6 +151,7 @@ const GameLogic = (() => {
 
     EventBus.on('player:landed',          _handlers.landed);
     EventBus.on('cube:moved',             _handlers.cube);
+    EventBus.on('movable:moved',          _handlers.movable);
     EventBus.on('ui:escape',              _handlers.escape);
     EventBus.on('player:step',            _handlers.step);
     EventBus.on('player:bumped',          _handlers.bump);
@@ -163,6 +165,7 @@ const GameLogic = (() => {
   function _unsubscribeEvents() {
     EventBus.off('player:landed',          _handlers.landed);
     EventBus.off('cube:moved',             _handlers.cube);
+    EventBus.off('movable:moved',          _handlers.movable);
     EventBus.off('ui:escape',              _handlers.escape);
     EventBus.off('player:step',            _handlers.step);
     EventBus.off('player:bumped',          _handlers.bump);
@@ -256,13 +259,32 @@ const GameLogic = (() => {
    * Checks if it lands on a button; re-evaluates lasers.
    */
   function _onCubeMoved(fromX, fromZ, toX, toZ) {
-    AudioEngine.cubePush();
+    AudioEngine.cubeMovablePush();
 
     // Cube landing on a button activates it
     if (Physics.getTile(toX, toZ) === CONSTANTS.TILE.BUTTON) {
       buttonStates[`${toX}_${toZ}`] = false; // Allow re-trigger
       _pressButton(toX, toZ);
       AMICA.sayLine('cube_on_button', 800);
+    }
+
+    // Cube may now block or unblock a laser path
+    LaserSystem.update();
+    Minimap.updateGrid(currentGrid);
+  }
+
+  /**
+   * Handle movable arriving at (toX, toZ).
+   * Checks if it lands on a button; re-evaluates lasers.
+   */
+  function _onMovableMoved(fromX, fromZ, toX, toZ) {
+    AudioEngine.cubeMovablePush();
+
+    // Cube landing on a button activates it
+    if (Physics.getTile(toX, toZ) === CONSTANTS.TILE.BUTTON) {
+      buttonStates[`${toX}_${toZ}`] = false; // Allow re-trigger
+      _pressButton(toX, toZ);
+      AMICA.sayLine('movable_on_button', 800);
     }
 
     // Cube may now block or unblock a laser path

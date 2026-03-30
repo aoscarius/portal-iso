@@ -212,7 +212,7 @@ const LevelEditor = (() => {
       // Remove any existing emitter at this spot
       laserData = laserData.filter(l => !(l.emitter.x === x && l.emitter.z === z));
       // Find first receiver key as placeholder (user can link manually via export)
-      laserData.push({ emitter: { x, z }, dir: { ...laserDir }, receiverId: `auto_${x}_${z}` });
+      laserData.push({ emitter: { x, z }, dir: { ...laserDir }, receiverId: `${x}_${z}` });
       _setStatus(`Emitter placed at (${x},${z}) dir=(${laserDir.dx},${laserDir.dz})`);
     }
   }
@@ -339,7 +339,7 @@ const LevelEditor = (() => {
         if (cx < 0 || cx >= gridW || cz < 0 || cz >= gridH) break;
         const tile = editorGrid[cz][cx];
         ctx.lineTo(cx * CELL + CELL/2, cz * CELL + CELL/2);
-        if (isSolid(tile) && tile !== CONSTANTS.TILE.PORTAL_WALL) break;
+        if (isSolid(tile)) break;
       }
       ctx.stroke();
       ctx.setLineDash([]);

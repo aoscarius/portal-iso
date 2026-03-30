@@ -171,8 +171,8 @@ const AudioEngine = (() => {
     _noise(500, 0.4, 0.1);
   }
 
-  /** Cube push — heavy scrape */
-  function cubePush() {
+  /** Cube/Movable push — heavy scrape */
+  function cubeMovablePush() {
     _noise(300, 0.15, 0.2);
     _tone(100, 'sawtooth', 0.15, 0.1);
   }
@@ -271,7 +271,7 @@ const AudioEngine = (() => {
   return {
     init, resume, setEnabled,
     step, portalA, portalB, teleport, portalMiss,
-    bump, buttonPress, doorOpen, cubePush, win, fail,
+    bump, buttonPress, doorOpen, cubeMovablePush, win, fail,
     laserHum, ambientDrone, dialogueClick, dialogueOpen,
   };
 })();
