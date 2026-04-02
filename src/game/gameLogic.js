@@ -29,9 +29,10 @@ const GameLogic = (() => {
 
   /**
    * Load a level: copy grid, init subsystems, place player, show intro.
+   * @param {Object} levelIdx - Level index in LEVELS[] or -1
    * @param {Object} levelData - Entry from LEVELS[] or a custom JSON object
    */
-  function loadLevel(levelData) {
+  function loadLevel(levelIdx, levelData) {
     currentLevel = levelData;
 
     // Deep-copy grid so mutations (doors opening, cubes moving) don't
@@ -77,8 +78,8 @@ const GameLogic = (() => {
     LaserSystem.update();
     Minimap.loadLevel({ ...levelData, grid: currentGrid });
 
-    // Dialogue system for this level
-    DialogueScript.loadLevel(levelData.id);
+    // Dialogue system for this level (if not custom: -1)
+    if (levelIdx != -1) DialogueScript.loadLevel(levelIdx);
 
     // Place player at start position
     const start = findPlayerStart(currentGrid);
@@ -88,13 +89,13 @@ const GameLogic = (() => {
     // Update HUD labels
     document.getElementById('level-num').textContent =
       String(levelData.id).padStart(2, '0');
-    document.getElementById('hud-title').textContent = levelData.name;
+    document.getElementById('hud-title').textContent = I18n.getLocalized(levelData.name);
 
     // AMICA subtitle — use localised first intro line if available
-    const i18nScript = I18n.getScripts()[levelData.id];
-    const amicaText = i18nScript?.intro?.lines?.[0] || levelData.amica;
+    const i18nScript = (levelIdx != -1) ? I18n.getLevelScripts(levelIdx) : undefined;
+    const amicaText = i18nScript?.intro?.lines?.[0] || I18n.getLocalized(levelData.amica);
     if (amicaText) AMICA.say(amicaText, 400);
-    if (levelData.hint)   setTimeout(() => UIManager.showHint(levelData.hint, 3500), 6000);
+    if (I18n.getLocalized(levelData.hint))   setTimeout(() => UIManager.showHint(I18n.getLocalized(levelData.hint), 3500), 6000);
 
     // Ambient startup sound
     AudioEngine.resume();
@@ -246,10 +247,11 @@ const GameLogic = (() => {
     doorStates[dk] = true;
     Physics.setTile(dx, dz, CONSTANTS.TILE.FLOOR); // Now walkable
     Renderer.setDoorState(dx, dz, true);
-    AudioEngine.doorOpen();
+    AudioEngine.doorOpenClose();
     UIManager.showHint(I18n.t('hud_access'), 2000);
     AMICA.sayLine('door_open', 600);
     Minimap.updateGrid(currentGrid); // Refresh minimap door colour
+    EventBus.emit('door:opened');
   }
 
   // ── Cube Movement ─────────────────────────────────────────
@@ -266,6 +268,7 @@ const GameLogic = (() => {
       buttonStates[`${toX}_${toZ}`] = false; // Allow re-trigger
       _pressButton(toX, toZ);
       AMICA.sayLine('cube_on_button', 800);
+      EventBus.emit('cube:onbutton');
     }
 
     // Cube may now block or unblock a laser path
@@ -298,7 +301,12 @@ const GameLogic = (() => {
     Player.destroy();
     AudioEngine.win();
     const isLast = (currentLevelIdx !== -1) && (currentLevelIdx === LEVELS.length - 1);
-    AMICA.sayLine(isLast ? 'all_done' : 'win_generic', 200);
+    winText = I18n.getLevelWinScripts(currentLevelIdx);
+    if (winText) {
+      winText.forEach(l => {AMICA.say(l, 200)});
+    } else {
+      AMICA.sayLine(isLast ? 'all_done' : 'win_generic', 200);
+    }
     setTimeout(() => {
       UIManager.showWin({
         steps:   Player.getStepCount(),
@@ -321,7 +329,7 @@ const GameLogic = (() => {
   /** Start a built-in level by its index in LEVELS[]. */
   function startFromLevel(index) {
     currentLevelIdx = index;
-    loadLevel(LEVELS[index]);
+    loadLevel(index, LEVELS[index]);
   }
 
   /** Restart the current level (resets all state). */
@@ -334,15 +342,18 @@ const GameLogic = (() => {
   function nextLevel() {
     unloadLevel();
     const next = currentLevelIdx + 1;
-    if (next < LEVELS.length) startFromLevel(next);
-    else                       EventBus.emit('game:all-done');
+    if (next < LEVELS.length) 
+      startFromLevel(next);
+    else                       
+      EventBus.emit('game:all-done');
   }
 
   /** Load an arbitrary level object, e.g. from the editor. */
   function loadCustomLevel(levelData) {
     unloadLevel();
     currentLevelIdx = -1;
-    loadLevel(levelData);
+    LEVELS[currentLevelIdx] = levelData;
+    loadLevel(-1, levelData);
   }
 
   return { getCurrentLevelIdx, startFromLevel, retryLevel, nextLevel, loadCustomLevel, unloadLevel, isRunning: () => !!currentLevel };

@@ -153,10 +153,10 @@ const UIManager = (() => {
     LEVELS.forEach((level, idx) => {
       const btn = document.createElement('button');
       btn.className = 'level-select-btn menu-btn';
-      const [, title] = level.name.split('—');
+      const [, title] = I18n.getLocalized(level.name).split('—');
       btn.innerHTML =
         `<span class="ls-num">${String(level.id).padStart(2,'0')}</span>` +
-        `<span class="ls-name">${(title || level.name).trim()}</span>`;
+        `<span class="ls-name">${(title || I18n.getLocalized(level.name)).trim()}</span>`;
       btn.addEventListener('click', () => {
         _hide('level-select-overlay');
         EventBus.emit('game:start', idx);

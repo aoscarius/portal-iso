@@ -156,7 +156,7 @@ const AudioEngine = (() => {
   }
 
   /** Door opening — mechanical slide */
-  function doorOpen() {
+  function doorOpenClose() {
     if (!ctx || !enabled) return;
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
@@ -271,7 +271,7 @@ const AudioEngine = (() => {
   return {
     init, resume, setEnabled,
     step, portalA, portalB, teleport, portalMiss,
-    bump, buttonPress, doorOpen, cubeMovablePush, win, fail,
+    bump, buttonPress, doorOpenClose, cubeMovablePush, win, fail,
     laserHum, ambientDrone, dialogueClick, dialogueOpen,
   };
 })();

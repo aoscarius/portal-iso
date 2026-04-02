@@ -7,7 +7,7 @@
 // ============================================================
 
 let LEVELS = [];
-let DIALOGUE_SCRIPTS = {};
+let DIALOGUE_SCRIPTS = [];
 
 const LevelLoader = (() => {
 

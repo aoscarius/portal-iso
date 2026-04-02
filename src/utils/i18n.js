@@ -490,9 +490,42 @@ const I18n = (() => {
     return AMICA_LINES[_lang] || AMICA_LINES.en;
   }
 
-  /** Returns the full per-level SCRIPTS map for current language. */
-  function getScripts() {
+  /** Returns the full SCRIPTS map for current language. */
+  function getScripts(levelId) {
     return SCRIPTS[_lang] || SCRIPTS.en;
+  }
+
+  /** Extract localized test from an object (es level.name) */
+  function getLocalized(obj) {
+    if (!obj) return "";
+    if (typeof obj === 'string') return obj;
+    if (Array.isArray(obj)) return obj;
+    return obj[_lang] || obj['en'] || "";
+  }
+
+  /** Returns the full per-level SCRIPTS map for current language. */
+  function getLevelScripts(levelId) {
+    const fullScript = DIALOGUE_SCRIPTS ? DIALOGUE_SCRIPTS[levelId] : null;
+    if (!fullScript) return null;
+
+    if (fullScript.en || fullScript.it) {
+      return fullScript[_lang] || fullScript.en;
+    }
+    // Legacy mode - return as-is if it's a simple array
+    return fullScript;
+  }
+
+  /** Returns the full per-level WIN SCRIPTS lines for current language. */
+  function getLevelWinScripts(levelId) {
+    // return SCRIPTS[_lang] || SCRIPTS.en;
+    const fullScript = DIALOGUE_SCRIPTS ? DIALOGUE_SCRIPTS[levelId] : null;
+    if (!fullScript) return null;
+
+    if (fullScript.win?.lines.en || fullScript.win?.lines.it) {
+      return fullScript.win?.lines[_lang] || fullScript.win?.lines.en;
+    }
+    // Not present
+    return null;
   }
 
   /** List of supported languages for the UI picker. */
@@ -501,5 +534,5 @@ const I18n = (() => {
     { code: 'it', label: 'ITALIANO' },
   ];
 
-  return { t, setLang, getLang, getTTSLang, loadSaved, getAmicaLines, getScripts, SUPPORTED };
+  return { t, setLang, getLang, getTTSLang, loadSaved, getAmicaLines, getScripts, getLocalized, getLevelScripts, getLevelWinScripts, SUPPORTED };
 })();

@@ -44,6 +44,11 @@ const PortalGun = (() => {
     Renderer.updatePortal(which, hit);
     _updateHUD();
     EventBus.emit('portal:placed', { which, cell: hit });
+
+    if (portals.A && portals.B) 
+      EventBus.emit('portal:both', { which, cell: hit });
+    else if (portals.A)
+      EventBus.emit('portal:first', { which, cell: hit });
   }
 
   /**

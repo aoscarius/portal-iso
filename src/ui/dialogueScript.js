@@ -26,7 +26,7 @@ const DialogueScript = (() => {
     stepFired  = {};
     eventFired = {};
 
-    const script = I18n.getScripts()[levelId];
+    const script = I18n.getLevelScripts(levelId);
     if (!script) return;
 
     // Show intro after delay
@@ -34,14 +34,14 @@ const DialogueScript = (() => {
       const delay = script.introDelay || 1200;
       setTimeout(() => {
         DialoguePanel.show({
-          speaker: script.intro.speaker,
-          lines:   script.intro.lines,
+          speaker: script.intro.speaker || 'amica',
+          lines:   I18n.getLocalized(script.intro.lines),
           onDone:  () => {
             // Chain introContinue if present
             if (script.introContinue) {
               DialoguePanel.show({
-                speaker: script.introContinue.speaker,
-                lines:   script.introContinue.lines,
+                speaker: script.introContinue.speaker || 'amica',
+                lines:   I18n.getLocalized(script.introContinue.lines),
               });
             }
           },
@@ -58,7 +58,7 @@ const DialogueScript = (() => {
           if (!cue.condition(data)) return;
           if (cue.once) eventFired[key] = true;
           setTimeout(() => {
-            DialoguePanel.enqueue({ speaker: 'amica', lines: cue.lines });
+            DialoguePanel.enqueue({ speaker: 'amica', lines: I18n.getLocalized(cue.lines) });
           }, 500);
         };
         EventBus.on(ev, handler);
@@ -72,7 +72,7 @@ const DialogueScript = (() => {
    * @param {number} stepCount
    */
   function onStep(stepCount) {
-    const script = I18n.getScripts()[currentId];
+    const script = I18n.getLevelScripts(currentId);
     if (!script?.stepCues) return;
 
     script.stepCues.forEach((cue, i) => {
@@ -80,7 +80,7 @@ const DialogueScript = (() => {
       if (!stepFired[key] && stepCount >= cue.steps) {
         stepFired[key] = true;
         setTimeout(() => {
-          DialoguePanel.enqueue({ speaker: 'amica', lines: cue.lines });
+          DialoguePanel.enqueue({ speaker: 'amica', lines: I18n.getLocalized(cue.lines) });
         }, 600);
       }
     });

@@ -124,6 +124,13 @@ const LevelEditor = (() => {
       _setStatus('Grid cleared.');
     });
 
+    // Clipboard managment
+    document.getElementById('btn-copy-level')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(_exportLevelCliboard())
+        .then(() => _setStatus('Grid success copy.'))
+        .catch(err => _setStatus('Failed to copy:', err)) 
+    });
+
     // File operations
     document.getElementById('btn-export-level')?.addEventListener('click', _exportLevel);
     document.getElementById('btn-import-level')?.addEventListener('click', () => {
@@ -402,13 +409,13 @@ const LevelEditor = (() => {
 
     return {
       id:     levelId,
-      name:   levelName,
-      hint:   levelHint,
+      name:   levelName === "string" ? { en: levelName, it: levelName } : levelName,
+      hint:   levelHint === "string" ? { en: levelHint, it: levelHint } : levelHint,
       width:  gridW, height: gridH,
       grid:   editorGrid.map(row => [...row]),
       links:  links.length > 0 ? links : undefined,
       lasers: lasers.length > 0 ? lasers : undefined,
-      amica: amicaScript,
+      amica: amicaScript === "string" ? { en: amicaScript, it: amicaScript } : amicaScript,
     };
   }
 
@@ -456,28 +463,91 @@ const LevelEditor = (() => {
       return { emitter: l.emitter, dir: l.dir, receiverId: l.receiverId };
     });
 
+    const expLevelName = typeof levelName === "string" 
+    ? `{ en: '${levelName}', it: '${levelName}'`
+    : JSON.stringify(levelName, null, 2);
+    const expLevelHint = typeof levelHint === "string" 
+    ? `{ en: '${levelHint}', it: '${levelHint}'`
+    : JSON.stringify(levelHint, null, 2);
+    const expAmica = typeof amicaScript === "string" 
+    ? `{ en: '${amicaScript.replace(/"/g, '\\"')}}', it: '${amicaScript.replace(/"/g, '\\"')}}'`
+    : JSON.stringify(amicaScript, null, 2);
+
     const fileContent = `// Level Export
 
 if (typeof LEVELS === 'undefined') LEVELS = [];
 LEVELS.push({
   id: '${id}',
-  name: '${levelName}',
-  hint: '${levelHint}',
+  name: ${expLevelName},
+  hint: ${expLevelHint},
   width: ${gridW}, height: ${gridH},
   grid: [\n${editorGrid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ],
   lasers: [${JSON.stringify(lasers, null, 2)}],
   links: [${JSON.stringify(links, null, 2)}],
-  amica: "${amicaScript.replace(/"/g, '\\"')}",
+  amica: ${expAmica},
 });
 
-if (typeof DIALOGUE_SCRIPTS === 'undefined') DIALOGUE_SCRIPTS = {};
-DIALOGUE_SCRIPTS[${id}] = ${JSON.stringify(levelDialogue, null, 2)};`;
+if (typeof DIALOGUE_SCRIPTS === 'undefined') DIALOGUE_SCRIPTS = [];
+DIALOGUE_SCRIPTS.push({
+  ${JSON.stringify(levelDialogue, null, 2)},
+});
+`;
 
     const blob = new Blob([fileContent], { type: 'text/javascript' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `level_${id}.js`;
     link.click();
+  }
+
+  // Grid only part export for clipboard
+  function _exportLevelCliboard() {
+    // Build button/door links from grid scan
+    const links = [];
+    const buttons   = [];
+    const doors     = [];
+    const receivers = [];
+
+    for (let z = 0; z < gridH; z++) {
+      for (let x = 0; x < gridW; x++) {
+        if (editorGrid[z][x] === CONSTANTS.TILE.BUTTON)   buttons.push({x,z});
+        if (editorGrid[z][x] === CONSTANTS.TILE.DOOR)     doors.push({x,z});
+        if (editorGrid[z][x] === CONSTANTS.TILE.RECEIVER) receivers.push({x,z});
+      }
+    }
+    // Auto-pair buttons → doors (1:1 sequential)
+    buttons.forEach((btn, i) => {
+      if (doors[i]) links.push({ button: btn, door: doors[i] });
+    });
+    // Auto-pair receivers → remaining doors
+    const usedDoors = buttons.length;
+    receivers.forEach((recv, i) => {
+      if (doors[usedDoors + i]) {
+        const recvId = `${recv.x}_${recv.z}`;
+        links.push({ receiver: recvId, door: doors[usedDoors + i] });
+      }
+    });
+
+    // Build laser data with proper receiver IDs
+    const lasers = laserData.map(l => {
+      // Find nearest receiver in laser direction from emitter
+      let rx = l.emitter.x, rz = l.emitter.z;
+      for (let s = 0; s < 20; s++) {
+        rx += l.dir.dx; rz += l.dir.dz;
+        if (rx < 0 || rx >= gridW || rz < 0 || rz >= gridH) break;
+        if (editorGrid[rz][rx] === CONSTANTS.TILE.RECEIVER) {
+          return { emitter: l.emitter, dir: l.dir, receiverId: `${rx}_${rz}` };
+        }
+      }
+      return { emitter: l.emitter, dir: l.dir, receiverId: l.receiverId };
+    });
+    
+    return `
+  width: ${gridW}, height: ${gridH},
+  grid: [\n${editorGrid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ],
+  lasers: [${JSON.stringify(lasers, null, 2)}],
+  links: [${JSON.stringify(links, null, 2)}],
+`;
   }
 
   // Data Import - Parses JS files by executing them in a sandbox
@@ -489,7 +559,7 @@ DIALOGUE_SCRIPTS[${id}] = ${JSON.stringify(levelDialogue, null, 2)};`;
       const content = ev.target.result;
       try {
         const tempLevels = [];
-        const tempDiag = {};
+        const tempDiag = [];
         // Execute the file code to extract data
         const parse = new Function('LEVELS', 'DIALOGUE_SCRIPTS', content);
         parse(tempLevels, tempDiag);
@@ -504,7 +574,7 @@ DIALOGUE_SCRIPTS[${id}] = ${JSON.stringify(levelDialogue, null, 2)};`;
         amicaScript = data.amica || '';
         laserData = data.lasers ? [...data.lasers] : [];
         linksData = data.links ? [...data.links] : [];
-        levelDialogue = tempDiag[levelId] || [];
+        levelDialogue = tempDiag || [];
         document.getElementById('grid-w').value = gridW;
         document.getElementById('grid-h').value = gridH;
         _render();

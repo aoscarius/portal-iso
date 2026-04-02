@@ -82,12 +82,14 @@ const AMICA = (() => {
    * @param {number} delay - ms delay before speaking
    */
   function say(text, delay = 0) {
+    clear();
     queue.push({ text, delay });
     if (!speaking) _processQueue();
   }
 
   /** Speak a keyed line from the current language's LINES map. */
   function sayLine(key, delay = 0) {
+    clear();
     const lines = I18n.getAmicaLines();
     if (lines[key]) say(lines[key], delay);
   }
