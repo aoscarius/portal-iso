@@ -26,8 +26,10 @@ const I18n = (() => {
   const UI = {
     en: {
       // Main menu
-      menu_play:        '▶ INITIALIZE TEST',
+      menu_play:        '▶ INITIALIZE TUTORIAL',
+      menu_multi:       '⬡ MULTI-FLOOR CHAMBERS ',
       menu_infinite:    '◈ PROCEDURAL CHAMBERS',
+      menu_multi_infinite: '⬡ PROCEDURAL MULTI-FLOOR CHAMBERS ',
       menu_editor:      '⬡ LEVEL EDITOR',
       menu_settings:    '⚙ SETTINGS',
       menu_chambers:    'CHAMBERS: 10',
@@ -88,8 +90,10 @@ const I18n = (() => {
 
     it: {
       // Menu principale
-      menu_play:        '▶ AVVIA TEST',
+      menu_play:        '▶ AVVIA TUTORIAL',
+      menu_multi:       '⬡ CAMERE MULTI-PIANO',
       menu_infinite:    '◈ CAMERE PROCEDURALI',
+      menu_multi_infinite: '⬡ CAMERE MULTI-PIANO PROCEDURALI',
       menu_editor:      '⬡ EDITOR LIVELLI',
       menu_settings:    '⚙ IMPOSTAZIONI',
       menu_chambers:    'CAMERE: 10',

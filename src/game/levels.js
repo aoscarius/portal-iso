@@ -57,3 +57,18 @@ function findPlayerStart(grid) {
   }
   return { x: 1, z: 1 }; // Fallback
 }
+
+/** 
+ * Multi-layer variant: scans all layers, returns {x, z, layer}. */
+function findPlayerStartMulti(levelData) {
+  const layers = levelData.layers
+    ? levelData.layers
+    : [{ grid: levelData.grid }];
+  for (let li = 0; li < layers.length; li++) {
+    const g = layers[li].grid;
+    for (let z = 0; z < g.length; z++)
+      for (let x = 0; x < g[z].length; x++)
+        if (g[z][x] === CONSTANTS.TILE.PLAYER) return { x, z, layer: li };
+  }
+  return { x: 1, z: 1, layer: 0 };
+}

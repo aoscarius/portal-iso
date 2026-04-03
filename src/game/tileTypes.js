@@ -43,8 +43,9 @@ const TileTypes = {
   },
   7: {
     id: 7, name: 'CUBE',
-    solid: true, walkable: true, portalable: false, movable: true, movable: true, // Can be pushed by player
+    solid: true, walkable: true, portalable: false, movable: true, // Can be pushed by player
     color: CONSTANTS.COLOR_CUBE, editorLabel: '⬡ CUBE', editorColor: '#aaaacc',
+    movable: true, // Can be pushed by player
   },
   8: {
     id: 8, name: 'HAZARD',
@@ -69,8 +70,23 @@ const TileTypes = {
   },
   12: {
     id: 12, name: 'MOVABLE',
-    solid: false, walkable: true, portalable: false, movable: true, movable: true, // Can be pushed by player (same as CUBE)
+    solid: false, walkable: true, portalable: false, movable: true, // Can be pushed by player (same as CUBE)
     color: '#3a2a1a', editorLabel: '⬛ BLOCK', editorColor: '#3a2a1a',
+  },
+  13: {
+    id: 13, name: 'STAIR_UP',
+    solid: false, walkable: true, portalable: false, movable: false,
+    color: CONSTANTS.COLOR_STAIR_UP, editorLabel: '↑ STAIR▲', editorColor: '#2a4a3a',
+  },
+  14: {
+    id: 14, name: 'STAIR_DOWN',
+    solid: false, walkable: true, portalable: false, movable: false,
+    color: CONSTANTS.COLOR_STAIR_DOWN, editorLabel: '↓ STAIR▼', editorColor: '#3a2a4a',
+  },
+  15: {
+    id: 15, name: 'FLOOR_HOLE',
+    solid: false, walkable: true, portalable: false, movable: false,
+    color: CONSTANTS.COLOR_FLOOR_HOLE, editorLabel: '⬡ HOLE', editorColor: '#151518',
   },
 };
 

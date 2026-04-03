@@ -16,8 +16,8 @@
   <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="src/ui/styles.css?v=818a4f6a" />
-  <link rel="stylesheet" href="src/ui/dialogue.css?v=6cfca9fa" />
+  <link rel="stylesheet" href="src/ui/styles.css?v=3e07c2a4" />
+  <link rel="stylesheet" href="src/ui/dialogue.css?v=755336f5" />
   <link rel="stylesheet" href="src/ui/ar.css?v=92cab65b" />
   <style>
     /* ── Camera buttons ────────────────────────────────── */
@@ -43,9 +43,11 @@
     #btn-orbit.active   { color: #ff6a00; border-color: #ff6a00; }
 
     /* ── Touch D-pad ────────────────────────────────────── */
+    /* Hidden by default; shown only in-game on touch devices via uiManager */
     #touch-dpad-arrows,
     #touch-dpad-portals { display: none; pointer-events: auto; }
 
+    /* Safe-area bottom: clears home-indicator on notch phones */
     #touch-dpad-arrows {
       position: fixed; bottom: 106px; left: 12px; z-index: 500;
       flex-direction: column; align-items: center; gap: 4px;
@@ -201,6 +203,11 @@
     ::-webkit-scrollbar-thumb { background: var(--border); }
     ::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
     * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg-panel); }
+
+    body:has(#ar-dom-overlay:not([style*="display:none"])) #touch-dpad-arrows,
+    body:has(#ar-dom-overlay:not([style*="display:none"])) #touch-dpad-portals {
+      bottom: 142px;
+    }
   </style>
 </head>
 <body>
@@ -266,11 +273,13 @@
         </svg>
       </div>
       <h1 class="game-title">PORTAL<span class="title-iso">ISO</span></h1>
-      <p class="subtitle">APERTURE ISOMETRIC LABORATORIES</p>
+      <p class="subtitle">APERTURE ISOMETRIC LABORATORIES<br><span style="font-size:8px;letter-spacing:2px;color:#ff6a00;opacity:.7">MULTI-LAYER · SOLUTION B</span></p>
       <div class="menu-divider"></div>
       <nav class="menu-nav">
-        <button class="menu-btn primary" id="btn-play"      data-i18n="menu_play">▶ INITIALIZE TEST</button>
-        <button class="menu-btn"         id="btn-infinite"  data-i18n="menu_infinite">◈ INFINITE CHAMBERS</button>
+        <button class="menu-btn primary" id="btn-play"       data-i18n="menu_play">▶ INITIALIZE TUTORIAL</button>
+        <button class="menu-btn"         id="btn-play-multi" data-i18n="menu_multi">⬡ CHAMBERS MULTI-FLOOR</button>
+        <button class="menu-btn"         id="btn-infinite"   data-i18n="menu_infinite">◈ PROCEDURAL CHAMBERS</button>
+        <button class="menu-btn"         id="btn-multi-gen"  data-i18n="menu_multi_infinite">⬡ RANDOM CHAMBERS MULTI-FLOOR</button>
         <!-- AR button shown only when WebXR is available -->
         <button class="menu-btn"         id="ar-entry-btn">◈ PLAY IN AR</button>
         <button class="menu-btn"         id="btn-editor">⬡ LEVEL EDITOR</button>
@@ -447,6 +456,7 @@
       </div>
       <div class="result-actions">
         <button class="menu-btn primary" id="btn-next-level" data-i18n="win_next">NEXT CHAMBER ▶</button>
+        <button class="menu-btn"         id="btn-back-editor-win" style="display:none;">⬡ BACK TO EDITOR</button>
         <button class="menu-btn"         id="btn-menu-from-win" data-i18n="win_menu">◂ MAIN MENU</button>
       </div>
     </div>
@@ -459,6 +469,7 @@
       <p class="result-subtitle" id="fail-message">Unexpected result.</p>
       <div class="result-actions">
         <button class="menu-btn primary" id="btn-retry">↺ RETRY</button>
+        <button class="menu-btn"         id="btn-back-editor-fail" style="display:none;">⬡ BACK TO EDITOR</button>
         <button class="menu-btn"         id="btn-menu-from-fail" data-i18n="fail_menu">◂ MAIN MENU</button>
       </div>
     </div>
@@ -477,6 +488,8 @@
           <button class="tool-btn"        id="tool-erase">◻ ERASE</button>
           <button class="tool-btn"        id="tool-fill" >▣ FILL</button>
         </div>
+        <div class="editor-section-title">FLOORS</div>
+        <div id="editor-layer-tabs" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;"></div>
         <div class="editor-section-title">TILES</div>
         <div class="tile-palette" id="tile-palette"></div>
         <div class="editor-section-title">GRID SIZE</div>
@@ -490,6 +503,15 @@
           <button class="dir-btn"        data-dx="0"  data-dz="1" >↓</button>
           <button class="dir-btn"        data-dx="0"  data-dz="-1">↑</button>
         </div>
+        <div class="editor-section-title">LEVEL NAME</div>
+        <input class="editor-level" id="editor-level-name" type="text" placeholder="CUSTOM CHAMBER"/>
+        <div class="editor-section-title">AMICA TEXT</div>
+        <textarea class="editor-amica" id="editor-amica-text" placeholder="Optional AMICA intro text..."></textarea>
+        <div class="editor-section-title">LINKS</div>
+        <span class="editor-link" id="editor-link-count"></span>
+        <div class="editor-link" id="editor-link-list">
+          <span style="color:var(--text-dim);">No links.</span>
+        </div>
         <div class="editor-section-title">FILE</div>
         <button class="tool-btn full"        id="btn-test-level"  >▶ TEST</button>
         <button class="tool-btn full"        id="btn-export-level">↓ EXPORT LEVEL</button>
@@ -497,7 +519,7 @@
         <input  type="file" id="import-file-input" accept=".js" style="display:none"/>
         <button class="tool-btn full"        id="btn-copy-level" >⎘ COPY CLIPBOARD</button>
         <button class="tool-btn full"        id="btn-clear-level" >⌫ CLEAR</button>
-        <button class="tool-btn full danger" id="btn-close-editor">✕ CLOSE</button>
+        <button class="tool-btn full danger" id="btn-close-editor">✕ MENU</button>
       </div>
       <div class="editor-canvas-wrap">
         <div class="editor-header">
@@ -505,7 +527,6 @@
           <span class="editor-header-space"></span>
           <button class="btn-exit" id="btn-exit">✕</button>
         </div>
-        
         <div class="editor-canvas-scroll" id="editor-canvas-scroll">
           <canvas id="editor-canvas"></canvas>
         </div>
@@ -606,7 +627,7 @@
       <button id="ar-menu-retry"  style="width:100%;padding:10px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">↺ RETRY CHAMBER</button>
       <button id="ar-menu-reset"  style="width:100%;padding:10px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">⊕ REPOSITION BOARD</button>
       <button id="ar-menu-exit"   style="width:100%;padding:10px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">✕ EXIT AR</button>
-    </div>
+  </div>
 
   </div><!-- #ar-dom-overlay -->
 
@@ -640,45 +661,47 @@
   ════════════════════════════════════════════════════════ -->
 
   <!-- Utilities (i18n + themes must load before constants so they can patch CONSTANTS colors) -->
-  <script src="src/utils/i18n.js?v=9ba59a39"></script>
+  <script src="src/utils/i18n.js?v=f7528c04"></script>
   <script src="src/utils/themes.js?v=1365cb12"></script>
-  <script src="src/utils/constants.js?v=6e041e81"></script>
+  <script src="src/utils/constants.js?v=83e20cd4"></script>
   <script src="src/utils/eventBus.js?v=5f27b48d"></script>
 
   <!-- Game data -->
-  <script src="src/game/tileTypes.js?v=952f05d3"></script>
-  <script src="src/game/levels.js?v=512893b6"></script>
+  <script src="src/game/tileTypes.js?v=c9b882f0"></script>
+  <script src="src/game/levels.js?v=0457fd1f"></script>
+  <script src="src/game/levels_multi.js?v=53bf8e4a"></script>
 
   <!-- Core systems -->
   <script src="src/game/audio.js?v=36880a5e"></script>
-  <script src="src/game/amica.js?v=64eb4b90"></script>
-  <script src="src/game/renderer.js?v=3f2ea175"></script>
+  <script src="src/game/amica.js?v=515661d2"></script>
+  <script src="src/game/renderer.js?v=4c074b12"></script>
   <script src="src/game/particles.js?v=dc4f208d"></script>
-  <script src="src/game/physics.js?v=5a6b68dc"></script>
-  <script src="src/game/portalGun.js?v=ac94a9e8"></script>
-  <script src="src/game/player.js?v=7ae32a96"></script>
-  <script src="src/game/laser.js?v=a85a81bb"></script>
+  <script src="src/game/physics.js?v=fa2464f6"></script>
+  <script src="src/game/portalGun.js?v=01ea8258"></script>
+  <script src="src/game/player.js?v=5a7b6885"></script>
+  <script src="src/game/laser.js?v=72eb15b5"></script>
   <script src="src/game/minimap.js?v=1ec153ef"></script>
-  <script src="src/game/arManager.js?v=cc5ac498"></script>
+  <script src="src/game/arManager.js?v=a0f855da"></script>
 
   <!-- Editor -->
-  <script src="src/editor/levelEditor.js?v=40515590"></script>
+  <script src="src/editor/levelEditor.js?v=37131edd"></script>
 
   <!-- UI layer -->
-  <script src="src/ui/dialoguePanel.js?v=243dac69"></script>
-  <script src="src/ui/dialogueScript.js?v=b998d810"></script>
-  <script src="src/ui/uiManager.js?v=401737fc"></script>
+  <script src="src/ui/dialoguePanel.js?v=5f0b003a"></script>
+  <script src="src/ui/dialogueScript.js?v=f9e49993"></script>
+  <script src="src/ui/uiManager.js?v=afb94fed"></script>
 
   <!-- 3D model loader (optional — gracefully skips missing .glb files) -->
-  <script src="src/game/assetLoader.js?v=5fe167d9"></script>
+  <script src="src/game/assetLoader.js?v=acb917c8"></script>
 
   <!-- Game logic (depends on all above) -->
   <script src="src/game/levelGenerator.js?v=52994473"></script>
-  <script src="src/game/gameLogic.js?v=c101163b"></script>
+  <script src="src/game/levelGenerator_multi.js?v=2ae9ca37"></script>
+  <script src="src/game/gameLogic.js?v=96399228"></script>
 
   <!-- Entry point -->
   <script src="src/ui/splashScreen.js?v=a27b7ecd"></script>
-  <script src="src/main.js?v=54bfa051"></script>
+  <script src="src/main.js?v=a334f133"></script>
 
 </body>
 </html>

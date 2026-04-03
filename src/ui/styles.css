@@ -444,6 +444,23 @@ body::before {
 }
 .editor-section-title:first-of-type { border-top: none; margin-top: 0; }
 
+.editor-level,
+.editor-amica,
+.editor-link {
+  width:100%; background:var(--bg-surface); 
+  color:var(--text-primary); font-family:var(--font-mono); font-size:10px;
+  border:1px solid var(--border); margin-bottom:4px;
+  padding:5px 8px; box-sizing:border-box;
+}
+.editor-amica {
+  min-height:52px; 
+  resize:vertical;
+}
+.editor-link {
+  min-height:25px; overflow-y:auto; 
+  line-height:1.8;
+}
+
 /* Tile palette grid */
 .tile-palette {
   display: grid; grid-template-columns: 1fr 1fr;

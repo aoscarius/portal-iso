@@ -64,15 +64,16 @@ const UIManager = (() => {
     if (_isTouchDevice()) _showTouchControls(true);
   }
 
-  function showWin({ steps, portals, isLast }) {
+  function showWin({ steps, portals, isLast, fromEditor = false }) {
     DialoguePanel?.clear();
     Minimap.setVisible(false);
     document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
+    document.getElementById('btn-back-editor-win')?.style.setProperty('display', fromEditor ? '' : 'none');
     _showTouchControls(false);
-
+    
     // In AR: show toast inside ar-dom-overlay instead of blocking overlay
     if (typeof ARManager !== 'undefined' && ARManager.isActive?.()) {
       const toast = document.getElementById('ar-win-toast');
@@ -93,7 +94,7 @@ const UIManager = (() => {
     _show('win-overlay');
   }
 
-  function showFail(message) {
+  function showFail(message, fromEditor = false) {
     DialoguePanel?.clear();
     document.getElementById('fail-message').textContent = message;
     Minimap.setVisible(false);
@@ -101,6 +102,7 @@ const UIManager = (() => {
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
+    document.getElementById('btn-back-editor-fail')?.style.setProperty('display', fromEditor ? '' : 'none');
     _showTouchControls(false);
 
     _show('fail-overlay');
@@ -114,6 +116,7 @@ const UIManager = (() => {
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
     _showTouchControls(false);
+    Minimap.setVisible(false);
     LevelEditor.init();
   }
 

@@ -212,6 +212,27 @@
 
   // ── 5. Top-level EventBus routing ────────────────────────
 
+  // Multi-layer chambers button
+  document.getElementById('btn-play-multi')?.addEventListener('click', () => {
+    if (typeof LEVELS_MULTI !== 'undefined' && LEVELS_MULTI.length) {
+      UIManager.showGame();
+      GameLogic.loadCustomLevel(LEVELS_MULTI[0]);
+    }
+  });
+
+  // Random multi-floor generator
+  document.getElementById('btn-multi-gen')?.addEventListener('click', () => {
+    if (typeof LevelGeneratorMulti !== 'undefined') {
+      const numLayers = 2 + Math.floor(Math.random() * 3);  // 2-4 floors
+      const ld = LevelGeneratorMulti.generate({
+        seed: Date.now(), difficulty: 2, numLayers,
+        width: 12, height: 10, id: 3000,
+      });
+      UIManager.showGame();
+      GameLogic.loadCustomLevel(ld);
+    }
+  });
+
   // Infinite procedural chambers
   let _infiniteDifficulty = 1;
   let _infiniteCount      = 0;

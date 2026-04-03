@@ -38,6 +38,15 @@ const CONSTANTS = {
   COLOR_DOOR:         '#ff4444',
   COLOR_CUBE:         '#aaaacc',
   COLOR_MOVABLE:      '#5a3a1a',  // Dark stone/concrete block
+  COLOR_STAIR_UP:     '#2a4a3a',  // Teal-green staircase going up
+  COLOR_STAIR_DOWN:   '#3a2a4a',  // Purple staircase going down
+  COLOR_FLOOR_HOLE:   '#050508',  // Nearly black — open void
+
+  // ── Multi-layer ────────────────────────────────────────────
+  LAYER_HEIGHT:  3.0,   // World-unit gap between layer y-origins
+                        //   = WALL_HEIGHT(2.5) + TILE_HEIGHT(0.5)
+  LAYER_FADE_ABOVE: 0.12,  // Alpha for layers ABOVE active (solution A)
+  LAYER_FADE_BELOW: 0.35,  // Alpha for layers BELOW active (solution A)
   COLOR_HAZARD:       '#ff2244',
   COLOR_EMITTER:      '#ff6a00',
 
@@ -56,6 +65,9 @@ const CONSTANTS = {
     EMITTER:     10,  // Laser emitter
     RECEIVER:    11,  // Laser receiver target
     MOVABLE:     12,  // Weighted Glass Block (pushable)
+    STAIR_UP:    13,  // Staircase going UP to next layer
+    STAIR_DOWN:  14,  // Staircase going DOWN to previous layer
+    FLOOR_HOLE:  15,  // Open hole — player falls to layer below
   },
 
   // ── Direction vectors (grid movement) ────────────────────
