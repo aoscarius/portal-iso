@@ -19,53 +19,55 @@
 
 const Player = (() => {
 
-  // ── State ──────────────────────────────────────────────────
-  let position   = { x: 0, z: 0 };
-  let facing     = CONSTANTS.DIRS.DOWN;
-  let isMoving   = false;
-  let stepCount  = 0;
-  let portalUses = 0;
+  // ── State ─────────────────────────────────────────────────
+  let position     = { x: 0, z: 0 };
+  let currentLayer = 0;
+  let facing       = CONSTANTS.DIRS.DOWN;
+  let isMoving     = false;
+  let stepCount    = 0;
+  let portalUses   = 0;
 
   let _scheme   = 'classic';  // 'classic' | 'tank'
   let _platform = 'desktop';  // 'desktop' | 'touch' | 'ar'
 
   // Path-following queue (click-to-move)
-  let _pathQueue  = [];   // [{x,z}, ...] remaining steps
-  let _pathTimer  = null; // setInterval handle
+  let _pathQueue = [];
+  let _pathTimer = null;
 
-  // ── Rotation table ─────────────────────────────────────────
+  // ── Rotation table ────────────────────────────────────────
   const TURN_ORDER = [
     CONSTANTS.DIRS.UP, CONSTANTS.DIRS.RIGHT,
     CONSTANTS.DIRS.DOWN, CONSTANTS.DIRS.LEFT,
   ];
-
   const CLASSIC_MAP = {
-    KeyW: CONSTANTS.DIRS.DOWN, ArrowUp:    CONSTANTS.DIRS.DOWN,
-    KeyS: CONSTANTS.DIRS.UP,   ArrowDown:  CONSTANTS.DIRS.UP,
-    KeyA: CONSTANTS.DIRS.LEFT, ArrowLeft:  CONSTANTS.DIRS.LEFT,
-    KeyD: CONSTANTS.DIRS.RIGHT,ArrowRight: CONSTANTS.DIRS.RIGHT,
+    KeyW: CONSTANTS.DIRS.DOWN,  ArrowUp:    CONSTANTS.DIRS.DOWN,
+    KeyS: CONSTANTS.DIRS.UP,    ArrowDown:  CONSTANTS.DIRS.UP,
+    KeyA: CONSTANTS.DIRS.LEFT,  ArrowLeft:  CONSTANTS.DIRS.LEFT,
+    KeyD: CONSTANTS.DIRS.RIGHT, ArrowRight: CONSTANTS.DIRS.RIGHT,
   };
   const AIM_MAP = {
     KeyZ: CONSTANTS.DIRS.UP,   KeyX: CONSTANTS.DIRS.DOWN,
     KeyC: CONSTANTS.DIRS.LEFT, KeyV: CONSTANTS.DIRS.RIGHT,
   };
 
-  // ── Listeners ───────────────────────────────────────────────
+  // ── Listeners ─────────────────────────────────────────────
   let _keyHandler   = null;
   let _mouseHandler = null;
   let _arHandlers   = [];
-  let _hoverMesh    = null;  // Currently hovered tile mesh in AR
+  let _hoverMesh    = null;
 
-  // ── Lifecycle ───────────────────────────────────────────────
+  // ── Lifecycle ─────────────────────────────────────────────
 
-  function init(startX, startZ) {
-    position   = { x: startX, z: startZ };
-    facing     = CONSTANTS.DIRS.RIGHT;
-    isMoving   = false;
-    stepCount  = 0;
-    portalUses = 0;
+  function init(startX, startZ, startLayer = 0) {
+    position     = { x: startX, z: startZ };
+    currentLayer = startLayer;
+    facing       = CONSTANTS.DIRS.RIGHT;
+    isMoving     = false;
+    stepCount    = 0;
+    portalUses   = 0;
+    _cancelPath();
     _detectPlatform();
-    Renderer.setPlayerMesh(startX, startZ);
+    Renderer.setPlayerMesh(startX, startZ, startLayer);
     _rotateMesh(facing);
     _startListeners();
   }
@@ -74,28 +76,26 @@ const Player = (() => {
 
   function setScheme(s) { if (s === 'classic' || s === 'tank') _scheme = s; }
   function getScheme()  { return _scheme; }
+  function getLayer()   { return currentLayer; }
 
-  // ── Platform detection ──────────────────────────────────────
+  // ── Platform detection ─────────────────────────────────────
 
   function _detectPlatform() {
-    const ua = navigator.userAgent || '';
-    // Quest browser: OculusBrowser or Meta in UA, or prefer immersive-ar check
-    const isQuest = /OculusBrowser|MetaQuest/i.test(ua);
+    const ua      = navigator.userAgent || '';
+    const isQuest  = /OculusBrowser|MetaQuest/i.test(ua);
     const isMobile = /Android|iPhone|iPad/i.test(ua) || (navigator.maxTouchPoints > 1);
-    if (ARManager?.isActive?.()) { _platform = 'ar'; }
-    else if (isQuest)            { _platform = 'ar'; }
-    else if (isMobile)           { _platform = 'touch'; }
-    else                         { _platform = 'desktop'; }
+    if      (ARManager?.isActive?.()) _platform = 'ar';
+    else if (isQuest)                 _platform = 'ar';
+    else if (isMobile)                _platform = 'touch';
+    else                              _platform = 'desktop';
   }
 
-  // ── Listeners ───────────────────────────────────────────────
+  // ── Listeners ─────────────────────────────────────────────
 
   function _startListeners() {
-    // Always listen for keyboard (works on desktop + Quest browser keyboard)
     _keyHandler = e => { if (e.type === 'keydown') _onKey(e.code); };
     window.addEventListener('keydown', _keyHandler);
 
-    // Unified mouse handler (works in all platforms including AR viewer)
     _mouseHandler = e => {
       if (e.button !== 0 && e.button !== 2) return;
       _handleMouseClick(e, e.button === 0 ? 'A' : 'B');
@@ -104,75 +104,66 @@ const Player = (() => {
     canvas?.addEventListener('mousedown', _mouseHandler);
     canvas?.addEventListener('contextmenu', e => e.preventDefault());
 
-    // AR controller actions
-    const arCellHandler = ({ x, z, action }) => {
+    const arCellHandler    = ({ x, z, action }) => {
       if (action === 'move') { _cancelPath(); _moveToCell(x, z); }
     };
-    const arActionHandler = ({ action }) => {
-      switch(action) {
-        case 'portal-a': PortalGun.shoot('A', position, facing); break;
-        case 'portal-b': PortalGun.shoot('B', position, facing); break;
+    const arActionHandler  = ({ action }) => {
+      switch (action) {
+        case 'portal-a': PortalGun.shoot('A', position, facing, currentLayer); break;
+        case 'portal-b': PortalGun.shoot('B', position, facing, currentLayer); break;
         case 'up':    _step(CONSTANTS.DIRS.UP);    break;
         case 'down':  _step(CONSTANTS.DIRS.DOWN);  break;
         case 'left':  _step(CONSTANTS.DIRS.LEFT);  break;
         case 'right': _step(CONSTANTS.DIRS.RIGHT); break;
       }
     };
-    const arHoverHandler = ({ mesh }) => { _onARHover(mesh); };
+    const arHoverHandler   = ({ mesh }) => _onARHover(mesh);
 
-    EventBus.on('ar:cell-picked',      arCellHandler);
+    EventBus.on('ar:cell-picked',       arCellHandler);
     EventBus.on('ar:controller-action', arActionHandler);
-    EventBus.on('ar:pointer-hover',    arHoverHandler);
+    EventBus.on('ar:pointer-hover',     arHoverHandler);
     _arHandlers = [
-      ['ar:cell-picked',      arCellHandler],
+      ['ar:cell-picked',       arCellHandler],
       ['ar:controller-action', arActionHandler],
-      ['ar:pointer-hover',    arHoverHandler],
+      ['ar:pointer-hover',     arHoverHandler],
     ];
 
-    // Touch virtual D-pad (injected by uiManager when platform=touch)
     _setupTouchDpad();
 
-    // Update platform on AR state changes
     EventBus.on('ar:entered', () => { _platform = 'ar'; _setupARHighlight(); });
     EventBus.on('ar:exited',  () => { _detectPlatform(); _clearARHighlight(); });
   }
 
   function _stopListeners() {
     if (_keyHandler)   window.removeEventListener('keydown', _keyHandler);
-    if (_mouseHandler) {
-      document.getElementById('game-canvas')
-        ?.removeEventListener('mousedown', _mouseHandler);
-    }
+    if (_mouseHandler) document.getElementById('game-canvas')?.removeEventListener('mousedown', _mouseHandler);
     _arHandlers.forEach(([ev, fn]) => EventBus.off(ev, fn));
-    _arHandlers = [];
-    _keyHandler = _mouseHandler = null;
+    _arHandlers   = [];
+    _keyHandler   = _mouseHandler = null;
   }
 
-  // ── Touch D-pad ─────────────────────────────────────────────
+  // ── Touch D-pad ───────────────────────────────────────────
 
   function _setupTouchDpad() {
-    // Wire all touch buttons — they live in #touch-dpad-arrows and #touch-dpad-portals
     const map = {
       'dpad-up':       () => _step(CONSTANTS.DIRS.DOWN),
       'dpad-down':     () => _step(CONSTANTS.DIRS.UP),
       'dpad-left':     () => _step(CONSTANTS.DIRS.LEFT),
       'dpad-right':    () => _step(CONSTANTS.DIRS.RIGHT),
-      'dpad-portal-a': () => PortalGun.shoot('A', position, facing),
-      'dpad-portal-b': () => PortalGun.shoot('B', position, facing),
+      'dpad-portal-a': () => PortalGun.shoot('A', position, facing, currentLayer),
+      'dpad-portal-b': () => PortalGun.shoot('B', position, facing, currentLayer),
     };
     Object.entries(map).forEach(([id, fn]) => {
       const el = document.getElementById(id);
       if (!el) return;
-      // touchstart for immediate response; also click for desktop testing
       el.addEventListener('touchstart', e => { e.preventDefault(); fn(); }, { passive: false });
       el.addEventListener('mousedown',  e => { e.preventDefault(); fn(); });
     });
   }
 
-  // ── AR tile highlight ────────────────────────────────────────
+  // ── AR tile highlight ─────────────────────────────────────
 
   function _setupARHighlight() {
-    // Allow picking via ray-cast
     const scene = Renderer.getScene();
     if (!scene) return;
     scene.meshes.forEach(m => { m.isPickable = true; });
@@ -180,29 +171,24 @@ const Player = (() => {
 
   function _clearARHighlight() {
     if (_hoverMesh) {
-      // Restore original material color
       EventBus.emit('ar:unhover', { mesh: _hoverMesh });
       _hoverMesh = null;
     }
   }
 
   function _onARHover(mesh) {
-    if (_hoverMesh && _hoverMesh !== mesh) {
-      EventBus.emit('ar:unhover', { mesh: _hoverMesh });
-    }
+    if (_hoverMesh && _hoverMesh !== mesh) EventBus.emit('ar:unhover', { mesh: _hoverMesh });
     _hoverMesh = mesh;
     EventBus.emit('ar:hover', { mesh });
   }
 
-  // ── AR cell navigation ───────────────────────────────────────
+  // ── BFS path following ────────────────────────────────────
 
   /**
-   * Start walking a BFS path from current position to (tx, tz).
-   * Steps are executed sequentially; each step waits for the
-   * animation to finish before taking the next one.
+   * Walk a BFS path from current position to (tx, tz) within currentLayer.
    */
   function _moveToCell(tx, tz) {
-    const path = Physics.findPath(position, { x: tx, z: tz });
+    const path = Physics.findPath(position, { x: tx, z: tz }, currentLayer);
     if (!path.length) return;
     _cancelPath();
     _pathQueue = path;
@@ -211,19 +197,10 @@ const Player = (() => {
 
   function _drivePathStep() {
     if (!_pathQueue.length) return;
-    if (isMoving) {
-      // Wait briefly and retry (animation not done yet)
-      _pathTimer = setTimeout(_drivePathStep, 40);
-      return;
-    }
+    if (isMoving) { _pathTimer = setTimeout(_drivePathStep, 40); return; }
     const next = _pathQueue.shift();
-    const dx   = next.x - position.x;
-    const dz   = next.z - position.z;
-    if (Math.abs(dx) + Math.abs(dz) !== 1) {
-      // Not an adjacent cell — path got stale (e.g. cube was pushed). Abort.
-      _cancelPath();
-      return;
-    }
+    const dx = next.x - position.x, dz = next.z - position.z;
+    if (Math.abs(dx) + Math.abs(dz) !== 1) { _cancelPath(); return; }
     const dir = dx !== 0
       ? (dx > 0 ? CONSTANTS.DIRS.RIGHT : CONSTANTS.DIRS.LEFT)
       : (dz > 0 ? CONSTANTS.DIRS.DOWN  : CONSTANTS.DIRS.UP);
@@ -236,14 +213,15 @@ const Player = (() => {
     _pathQueue = [];
   }
 
-  // ── Keyboard ─────────────────────────────────────────────────
+  // ── Keyboard ──────────────────────────────────────────────
 
   function _onKey(code) {
-    switch(code) {
-      case 'KeyQ': PortalGun.shoot('A', position, facing); return;
-      case 'KeyR': PortalGun.shoot('B', position, facing); return;
+    switch (code) {
+      case 'KeyQ':   PortalGun.shoot('A', position, facing, currentLayer); return;
+      case 'KeyR':   PortalGun.shoot('B', position, facing, currentLayer); return;
       case 'Escape': EventBus.emit('ui:escape'); return;
     }
+    _cancelPath();
     if (_scheme === 'classic') _handleClassic(code);
     else                       _handleTank(code);
   }
@@ -262,9 +240,9 @@ const Player = (() => {
   }
 
   function _handleTank(code) {
-    switch(code) {
+    switch (code) {
       case 'KeyW': case 'ArrowUp':    _step(facing); break;
-      case 'KeyS': case 'ArrowDown':  _step({ dx:-facing.dx, dz:-facing.dz }); break;
+      case 'KeyS': case 'ArrowDown':  _step({ dx: -facing.dx, dz: -facing.dz }); break;
       case 'KeyA': case 'ArrowLeft':  _turn(-1); break;
       case 'KeyD': case 'ArrowRight': _turn(+1); break;
     }
@@ -272,13 +250,13 @@ const Player = (() => {
 
   function _turn(delta) {
     if (isMoving) return;
-    const idx  = TURN_ORDER.findIndex(d => d.dx===facing.dx && d.dz===facing.dz);
+    const idx = TURN_ORDER.findIndex(d => d.dx === facing.dx && d.dz === facing.dz);
     facing = TURN_ORDER[(idx + delta + 4) % 4];
     _rotateMesh(facing);
     EventBus.emit('player:turned', { facing });
   }
 
-  // ── Core movement ────────────────────────────────────────────
+  // ── Core movement ─────────────────────────────────────────
 
   function _step(dir) {
     if (isMoving) return;
@@ -287,59 +265,110 @@ const Player = (() => {
     const nx = position.x + dir.dx;
     const nz = position.z + dir.dz;
 
-    // Teleport check before collision (portal walls are solid)
-    const teleport = PortalGun.checkTeleport(position, nx, nz, dir);
-    if (teleport) { _doTeleport(teleport); return; }
+    // Portal teleport check (layer-aware — portal walls are solid so must run first)
+    const tp = PortalGun.checkTeleport(position, nx, nz, dir, currentLayer);
+    if (tp) { _doTeleport(tp); return; }
 
-    const result = Physics.canMoveTo(position.x, position.z, nx, nz);
-    if (!result.ok) { EventBus.emit('player:bumped', { x:nx, z:nz }); return; }
+    const result = Physics.canMoveTo(position.x, position.z, nx, nz, currentLayer);
+    if (!result.ok) { EventBus.emit('player:bumped', { x: nx, z: nz }); return; }
 
+    // Push cube
     if (result.pushCube) {
       const { fromX, fromZ, toX, toZ } = result.pushCube;
-      Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR);
-      Renderer.moveCubeMesh(fromX, fromZ, toX, toZ);
-      EventBus.emit('cube:moved', { fromX, fromZ, toX, toZ });
-      Physics.setTile(toX, toZ, CONSTANTS.TILE.CUBE);
+      const origTile = Physics.getTile(toX, toZ, currentLayer);
+      Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR, currentLayer);
+      Renderer.moveCubeMesh(fromX, fromZ, toX, toZ, currentLayer);
+      EventBus.emit('cube:moved', { fromX, fromZ, toX, toZ, layer: currentLayer, origTile });
+      Physics.setTile(toX, toZ, CONSTANTS.TILE.CUBE, currentLayer);
     }
+
+    // Push movable
     if (result.pushMovable) {
       const { fromX, fromZ, toX, toZ } = result.pushMovable;
-      Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR);
-      Renderer.moveMovableMesh(fromX, fromZ, toX, toZ);
-      EventBus.emit('movable:moved', { fromX, fromZ, toX, toZ });
-      Physics.setTile(toX, toZ, CONSTANTS.TILE.MOVABLE);
+      const origTile = Physics.getTile(toX, toZ, currentLayer);
+      Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR, currentLayer);
+      Physics.setTile(toX, toZ, CONSTANTS.TILE.MOVABLE, currentLayer);
+      Renderer.moveMovableMesh(fromX, fromZ, toX, toZ, currentLayer);
+      EventBus.emit('movable:moved', { fromX, fromZ, toX, toZ, layer: currentLayer, origTile });
     }
-    _commitMove(nx, nz);
+
+    _commit(nx, nz);
   }
 
-  function _commitMove(nx, nz) {
+  function _commit(nx, nz) {
     isMoving = true;
-    position = { x:nx, z:nz };
+    position = { x: nx, z: nz };
     stepCount++;
     const el = document.getElementById('step-count');
     if (el) el.textContent = stepCount;
-    EventBus.emit('player:step', { x:nx, z:nz });
-    Renderer.animatePlayerTo(nx, nz, () => {
+    EventBus.emit('player:step', { x: nx, z: nz, layer: currentLayer });
+
+    Renderer.animatePlayerTo(nx, nz, currentLayer, () => {
       isMoving = false;
-      EventBus.emit('player:landed', { x:nx, z:nz });
+      // Check for stair/hole transition after landing
+      const transition = Physics.getLayerTransition(nx, nz, currentLayer);
+      if (transition) {
+        _doLayerTransition(transition);
+      } else {
+        EventBus.emit('player:landed', { x: nx, z: nz, layer: currentLayer });
+      }
     });
   }
 
-  function _doTeleport({ exitX, exitZ, exitDir }) {
-    isMoving   = true;
+  /**
+   * Animate the player vertically between layers after stepping on a stair/hole.
+   * Fires player:layer-changed then player:landed on arrival.
+   */
+  function _doLayerTransition(dest) {
+    const prevLayer = currentLayer;
+    currentLayer    = dest.layerIdx;
+    position        = { x: dest.x, z: dest.z };
+
+    Renderer.animatePlayerLayerChange(dest.x, dest.z, prevLayer, dest.layerIdx, () => {
+      isMoving = false;
+      EventBus.emit('player:layer-changed', {
+        x: dest.x, z: dest.z,
+        fromLayer: prevLayer, toLayer: dest.layerIdx,
+      });
+      EventBus.emit('player:landed', { x: dest.x, z: dest.z, layer: currentLayer });
+    });
+  }
+
+  /**
+   * Teleport the player to the portal exit.
+   * Cross-layer portals use the layer-change animation; same-layer portals use the hop.
+   */
+  function _doTeleport({ exitX, exitZ, exitDir, exitLayer = currentLayer }) {
+    isMoving     = true;
     portalUses++;
-    position   = { x:exitX, z:exitZ };
-    facing     = exitDir;
+    const prevLayer = currentLayer;
+    position        = { x: exitX, z: exitZ };
+    currentLayer    = exitLayer;
+    facing          = exitDir;
     stepCount++;
     _rotateMesh(exitDir);
     EventBus.emit('portal:used', { exitX, exitZ });
     EventBus.emit('ui:portal-flash');
-    Renderer.animatePlayerTo(exitX, exitZ, () => {
+
+    const onArrived = () => {
       isMoving = false;
-      EventBus.emit('player:landed', { x:exitX, z:exitZ });
-    });
+      if (exitLayer !== prevLayer) {
+        EventBus.emit('player:layer-changed', {
+          x: exitX, z: exitZ,
+          fromLayer: prevLayer, toLayer: exitLayer,
+        });
+      }
+      EventBus.emit('player:landed', { x: exitX, z: exitZ, layer: currentLayer });
+    };
+
+    if (exitLayer !== prevLayer) {
+      Renderer.animatePlayerLayerChange(exitX, exitZ, prevLayer, exitLayer, onArrived);
+    } else {
+      Renderer.animatePlayerTo(exitX, exitZ, exitLayer, onArrived);
+    }
   }
 
-  // ── Mouse click handler ─────────────────────────────────────
+  // ── Mouse click handler ───────────────────────────────────
   // Left-click floor → walk there via BFS path
   // Left-click portal_wall → shoot Portal A
   // Right-click portal_wall → shoot Portal B
@@ -355,54 +384,46 @@ const Player = (() => {
       const pick = scene.pick(e.clientX - rect.left, e.clientY - rect.top);
       if (!pick?.hit || !pick.pickedMesh) return;
 
-      // Read grid info from mesh metadata
       const meta   = pick.pickedMesh.metadata;
-      const gx     = meta?.gridX ?? Math.round(pick.pickedPoint.x / CONSTANTS.TILE_SIZE);
-      const gz     = meta?.gridZ ?? Math.round(pick.pickedPoint.z / CONSTANTS.TILE_SIZE);
-      const tileId = meta?.tileId ?? Physics.getTile(gx, gz);
+      const gx     = meta?.gridX    ?? Math.round(pick.pickedPoint.x / CONSTANTS.TILE_SIZE);
+      const gz     = meta?.gridZ    ?? Math.round(pick.pickedPoint.z / CONSTANTS.TILE_SIZE);
+      const layer  = meta?.layerIdx ?? currentLayer;
+      const tileId = meta?.tileId   ?? Physics.getTile(gx, gz, layer);
 
       if (tileId === CONSTANTS.TILE.PORTAL_WALL) {
-        // Clicked a portal wall: shoot portal in player→wall direction
-        const ddx = Math.sign(gx - position.x);
-        const ddz = Math.sign(gz - position.z);
+        const ddx = Math.sign(gx - position.x), ddz = Math.sign(gz - position.z);
         const dir = Math.abs(gx - position.x) >= Math.abs(gz - position.z)
-          ? { dx: ddx || 1, dz: 0 }
-          : { dx: 0, dz: ddz || 1 };
-        PortalGun.shoot(which, position, dir);
+          ? { dx: ddx || 1, dz: 0 } : { dx: 0, dz: ddz || 1 };
+        PortalGun.shoot(which, position, dir, currentLayer);
         return;
       }
 
       if (e.button === 2) {
-        // Right-click on non-portal: shoot in click direction
-        const ddx = Math.sign(gx - position.x);
-        const ddz = Math.sign(gz - position.z);
+        const ddx = Math.sign(gx - position.x), ddz = Math.sign(gz - position.z);
         const dir = Math.abs(gx - position.x) >= Math.abs(gz - position.z)
-          ? { dx: ddx || 1, dz: 0 }
-          : { dx: 0, dz: ddz || 1 };
-        PortalGun.shoot('B', position, dir);
+          ? { dx: ddx || 1, dz: 0 } : { dx: 0, dz: ddz || 1 };
+        PortalGun.shoot('B', position, dir, currentLayer);
         return;
       }
 
-      // Left-click on walkable tile: pathfind and walk there
-      if (!isSolid(tileId)) {
+      // Left-click walkable tile on same layer → pathfind
+      if (layer === currentLayer && !Physics.isSolidTile(tileId)) {
         _cancelPath();
         _moveToCell(gx, gz);
       }
-    } catch(err) {
+    } catch (err) {
       console.warn('[Player] click handler:', err);
     }
   }
 
-  // ── Mesh helpers ─────────────────────────────────────────────
+  // ── Mesh helpers ──────────────────────────────────────────
 
-  function _rotateMesh(dir) {
-    try { Renderer.rotatePlayerMesh(dir); } catch(_) {}
-  }
+  function _rotateMesh(dir) { try { Renderer.rotatePlayerMesh(dir); } catch(_) {} }
 
-  // ── Public API ───────────────────────────────────────────────
+  // ── Public API ────────────────────────────────────────────
 
   return {
-    init, destroy, setScheme, getScheme,
+    init, destroy, setScheme, getScheme, getLayer,
     getPosition:   () => ({ ...position }),
     getFacing:     () => ({ ...facing }),
     getStepCount:  () => stepCount,

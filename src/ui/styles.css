@@ -451,13 +451,14 @@ body::before {
   color:var(--text-primary); font-family:var(--font-mono); font-size:10px;
   border:1px solid var(--border); margin-bottom:4px;
   padding:5px 8px; box-sizing:border-box;
+  display: flex; flex-direction: column; gap: 1px;
 }
 .editor-amica {
-  min-height:52px; 
+  min-height:52px; overflow-y:auto;
   resize:vertical;
 }
 .editor-link {
-  min-height:25px; overflow-y:auto; 
+  min-height:52px; overflow-y:auto; 
   line-height:1.8;
 }
 

@@ -4,14 +4,19 @@
 // ============================================================
 
 const Minimap = (() => {
-  const CELL   = 7;    // Pixels per cell
-  const MARGIN = 16;   // Offset from corner (px)
+  const CELL_NORMAL  = 7;   // Pixels per cell — normal size
+  const CELL_LARGE   = 14;  // Pixels per cell — enlarged size
+  const MARGIN = 16;        // Offset from corner (px)
+  let CELL = CELL_NORMAL;   // Active cell size, toggled by double-click
   let canvas, ctx;
   let currentLevel = null;
   let playerPos    = { x: 0, z: 0 };
   let portalA      = null;
   let portalB      = null;
   let visible      = true;
+  let _laserSegs   = [];   // [{from:{x,z}, to:{x,z}, layerIdx}] — from LaserSystem
+  let _enlarged    = false;
+
 
   // ── Init ─────────────────────────────────────────────────
 
@@ -19,18 +24,31 @@ const Minimap = (() => {
     canvas = document.createElement('canvas');
     canvas.id = 'minimap-canvas';
     Object.assign(canvas.style, {
-      position:     'fixed',
-      bottom:       `${MARGIN}px`,
-      right:        `${MARGIN}px`,
-      zIndex:       '60',
-      border:       '1px solid rgba(255,106,0,0.4)',
-      borderTop:    '2px solid rgba(255,106,0,0.7)',
-      background:   'rgba(10,10,12,0.88)',
+      position:      'fixed',
+      bottom:        `${MARGIN}px`,
+      right:         `${MARGIN}px`,
+      zIndex:        '60',
+      border:        '1px solid rgba(255,106,0,0.4)',
+      borderTop:     '2px solid rgba(255,106,0,0.7)',
+      background:    'rgba(10,10,12,0.88)',
       imageRendering:'pixelated',
-      pointerEvents:'none',
+      pointerEvents: 'auto',
+      cursor:        'pointer',
+      transition:    'width 0.15s ease, height 0.15s ease',
     });
     document.body.appendChild(canvas);
     ctx = canvas.getContext('2d');
+
+    // Double-click toggles between normal and enlarged size
+    canvas.addEventListener('dblclick', () => {
+      _enlarged = !_enlarged;
+      CELL = _enlarged ? CELL_LARGE : CELL_NORMAL;
+      if (currentLevel) {
+        canvas.width  = currentLevel.width  * CELL;
+        canvas.height = currentLevel.height * CELL;
+      }
+      render();
+    });
   }
 
   // ── Public API ────────────────────────────────────────────
@@ -51,6 +69,12 @@ const Minimap = (() => {
   function setPortal(which, cell) {
     if (which === 'A') portalA = cell;
     else               portalB = cell;
+    render();
+  }
+
+  // Called by LaserSystem.update() (or gameLogic after update) to refresh laser overlay
+  function setLaserSegments(segs) {
+    _laserSegs = segs || [];
     render();
   }
 
@@ -75,6 +99,9 @@ const Minimap = (() => {
     [CONSTANTS.TILE.EMITTER]:     '#ff6a00',
     [CONSTANTS.TILE.RECEIVER]:    '#00ccff',
     [CONSTANTS.TILE.MOVABLE]:     '#5a3a1a',
+    [CONSTANTS.TILE.STAIR_UP]:    '#00ff88',
+    [CONSTANTS.TILE.STAIR_DOWN]:  '#aa88ff',
+    [CONSTANTS.TILE.FLOOR_HOLE]:  '#111118',
   };
 
   function render() {
@@ -104,6 +131,21 @@ const Minimap = (() => {
       ctx.fillStyle = CONSTANTS.COLOR_PORTAL_B;
       ctx.fillRect(portalB.x * CELL + 1, portalB.z * CELL + 1, CELL - 2, CELL - 2);
       _drawLabel('B', portalB.x, portalB.z);
+    }
+
+    // Draw laser beams
+    if (_laserSegs.length > 0) {
+      const activeLayer = typeof Player !== 'undefined' && Player.getLayer ? Player.getLayer() : 0;
+      ctx.strokeStyle = 'rgba(255,50,50,0.75)';
+      ctx.lineWidth   = Math.max(1, CELL * 0.18);
+      ctx.lineCap     = 'round';
+      _laserSegs.forEach(seg => {
+        if ((seg.layerIdx ?? 0) !== activeLayer) return;
+        ctx.beginPath();
+        ctx.moveTo(seg.from.x * CELL + CELL / 2, seg.from.z * CELL + CELL / 2);
+        ctx.lineTo(seg.to.x   * CELL + CELL / 2, seg.to.z   * CELL + CELL / 2);
+        ctx.stroke();
+      });
     }
 
     // Draw player — bright dot with pulse ring
@@ -138,12 +180,22 @@ const Minimap = (() => {
     ctx.fillText(label, gx * CELL + CELL / 2, gz * CELL + CELL / 2);
   }
 
-  // Expose a method to update grid state (when doors open, cubes/movable move)
-  function updateGrid(grid) {
+  // Pull the live grid from Physics so cube/movable positions are always current
+  function updateGrid(layerIdx = 0) {
     if (!currentLevel) return;
-    currentLevel = { ...currentLevel, grid };
+    // Physics owns the authoritative grid — read it directly
+    if (typeof Physics !== 'undefined') {
+      const liveGrid = [];
+      for (let z = 0; z < currentLevel.height; z++) {
+        liveGrid.push([]);
+        for (let x = 0; x < currentLevel.width; x++) {
+          liveGrid[z].push(Physics.getTile(x, z, layerIdx));
+        }
+      }
+      currentLevel = { ...currentLevel, grid: liveGrid };
+    }
     render();
   }
 
-  return { init, loadLevel, setPlayerPosition, setPortal, setVisible, updateGrid, render, isVisible: () => visible };
+  return { init, loadLevel, setPlayerPosition, setPortal, setLaserSegments, setVisible, updateGrid, render, isVisible: () => visible };
 })();
