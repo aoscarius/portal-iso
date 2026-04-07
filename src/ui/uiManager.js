@@ -8,6 +8,7 @@
 const UIManager = (() => {
 
   let _hintTimer = null;
+  let _fromEditor = false;
 
   // ── Overlay helpers ───────────────────────────────────────
 
@@ -37,6 +38,7 @@ const UIManager = (() => {
   function showMainMenu() {
     _show('main-menu');
     document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
+    document.getElementById('btn-editor-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
@@ -48,12 +50,13 @@ const UIManager = (() => {
     _relabel();   // Refresh all text with current language
   }
 
-  function showGame() {
+  function showGame(fromEditor = false) {
     ['main-menu','win-overlay','fail-overlay','editor-overlay',
      'settings-overlay','level-select-overlay'].forEach(id => _hide(id));
     document.getElementById('hud').classList.remove('hidden');
     Minimap.setVisible(true);
-    document.getElementById('btn-menu-from-game')?.classList.add('cam-visible');
+    const id = fromEditor ? 'btn-editor-from-game' : 'btn-menu-from-game' ;
+    document.getElementById(id)?.classList.add('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.add('cam-visible');
     document.getElementById('btn-orbit')?.classList.add('cam-visible');
     // Show AR button only if AR is supported
@@ -62,16 +65,19 @@ const UIManager = (() => {
     }
     // Show touch D-pad when on a touch device and outside AR
     if (_isTouchDevice()) _showTouchControls(true);
+    // Save starting state
+    _fromEditor = fromEditor;
   }
 
-  function showWin({ steps, portals, isLast, fromEditor = false }) {
+  function showWin({ steps, portals, isLast }) {
     DialoguePanel?.clear();
     Minimap.setVisible(false);
     document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
+    document.getElementById('btn-editor-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
-    document.getElementById('btn-back-editor-win')?.style.setProperty('display', fromEditor ? '' : 'none');
+    document.getElementById('btn-back-editor-win')?.style.setProperty('display', _fromEditor ? '' : 'none');
     _showTouchControls(false);
     
     // In AR: show toast inside ar-dom-overlay instead of blocking overlay
@@ -84,6 +90,7 @@ const UIManager = (() => {
         if (next)  next.style.display = isLast ? 'none' : '';
         toast.style.display = 'flex';
       }
+      if (ARManager.isActive?.()) ARManager.show3DWin?.();
       return;
     }
 
@@ -94,16 +101,26 @@ const UIManager = (() => {
     _show('win-overlay');
   }
 
-  function showFail(message, fromEditor = false) {
+  function showFail(message) {
     DialoguePanel?.clear();
     document.getElementById('fail-message').textContent = message;
     Minimap.setVisible(false);
     document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
+    document.getElementById('btn-editor-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
-    document.getElementById('btn-back-editor-fail')?.style.setProperty('display', fromEditor ? '' : 'none');
+    document.getElementById('btn-back-editor-fail')?.style.setProperty('display', _fromEditor ? '' : 'none');
     _showTouchControls(false);
+
+    if (typeof ARManager !== 'undefined' && ARManager.isActive?.()) {
+      const toast = document.getElementById('ar-fail-toast');
+      if (toast) {
+        toast.style.display = 'flex';
+      }
+      if (ARManager.isActive?.()) ARManager.show3DFail?.();
+      return;
+    }
 
     _show('fail-overlay');
   }
@@ -112,6 +129,7 @@ const UIManager = (() => {
     _show('editor-overlay');
     document.getElementById('hud').classList.add('hidden');
     document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
+    document.getElementById('btn-editor-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
@@ -355,6 +373,9 @@ const UIManager = (() => {
     document.getElementById('btn-menu-from-game')?.addEventListener('click', () => {
       EventBus.emit('game:to-menu');
     });
+    document.getElementById('btn-editor-from-game')?.addEventListener('click', () => {
+      EventBus.emit('game:to-editor');
+    });
 
     // Orbit camera toggle (visible during gameplay)
     document.getElementById('btn-orbit')?.addEventListener('click', () => {
@@ -394,11 +415,17 @@ const UIManager = (() => {
     document.getElementById('btn-next-level')?.addEventListener('click', () => {
       EventBus.emit('game:next-level');
     });
+    document.getElementById('btn-back-editor-win')?.addEventListener('click', () => {
+      EventBus.emit('game:to-editor');
+    });
     document.getElementById('btn-menu-from-win')?.addEventListener('click', () => {
       EventBus.emit('game:to-menu');
     });
     document.getElementById('btn-retry')?.addEventListener('click', () => {
       EventBus.emit('game:retry');
+    });
+    document.getElementById('btn-back-editor-fail')?.addEventListener('click', () => {
+      EventBus.emit('game:to-editor');
     });
     document.getElementById('btn-menu-from-fail')?.addEventListener('click', () => {
       EventBus.emit('game:to-menu');

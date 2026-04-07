@@ -20,10 +20,18 @@ const Physics = (() => {
     _width  = levelData.width;
     _height = levelData.height;
 
+    const createStackGrid = (sourceGrid) => {
+      return sourceGrid.map(row => 
+        row.map(cell => {
+          return Array.isArray(cell) ? [...cell] : [cell];
+        })
+      );
+    };
+
     if (levelData.layers) {
-      _layers = levelData.layers.map(l => l.grid.map(row => [...row]));
+      _layers = levelData.layers.map(l => createStackGrid(l.grid));
     } else {
-      _layers = [levelData.grid.map(row => [...row])];
+      _layers = [createStackGrid(levelData.grid)];
     }
   }
 
@@ -33,11 +41,24 @@ const Physics = (() => {
    * Get the tile ID at (x, z) on a given layer.
    * Returns WALL if out of bounds or layer missing.
    */
+  function baseTile(x, z, layerIdx = 0) {
+    const grid = _layers[layerIdx];
+    if (!grid) return CONSTANTS.TILE.WALL;
+    if (x < 0 || x >= _width || z < 0 || z >= _height) return CONSTANTS.TILE.WALL;
+    return grid[z][x][0];
+  }
   function getTile(x, z, layerIdx = 0) {
     const grid = _layers[layerIdx];
     if (!grid) return CONSTANTS.TILE.WALL;
     if (x < 0 || x >= _width || z < 0 || z >= _height) return CONSTANTS.TILE.WALL;
-    return grid[z][x];
+    return grid[z][x][grid[z][x].length - 1];
+  }
+  function popTile(x, z, tileId, layerIdx = 0) {
+    const grid = _layers[layerIdx];
+    if (!grid || x < 0 || x >= _width || z < 0 || z >= _height) return;
+    if (grid[z][x].length > 1)
+      return grid[z][x].pop();
+    return grid[z][x][0];
   }
 
   /**
@@ -46,8 +67,14 @@ const Physics = (() => {
   function setTile(x, z, tileId, layerIdx = 0) {
     const grid = _layers[layerIdx];
     if (!grid || x < 0 || x >= _width || z < 0 || z >= _height) return;
-    grid[z][x] = tileId;
+    grid[z][x][0] = tileId;
   }
+  function pushTile(x, z, tileId, layerIdx = 0) {
+    const grid = _layers[layerIdx];
+    if (!grid || x < 0 || x >= _width || z < 0 || z >= _height) return;
+    grid[z][x].push(tileId);
+  }
+
 
   function getLayerCount() { return _layers.length; }
 
@@ -249,7 +276,7 @@ const Physics = (() => {
   }
 
   return {
-    init, getTile, setTile, getLayerCount,
+    init, baseTile, getTile, popTile, setTile, pushTile, getLayerCount,
     isSolidTile, canMoveTo, getLayerTransition,
     castPortalRay, getPortalExit, findPath,
   };

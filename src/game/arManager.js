@@ -38,6 +38,7 @@ const ARManager = (() => {
   let _placed       = false;
   let _scene           = null;
   let _meshObsHandle   = null;
+  let _nodeObsHandle   = null;   // TransformNode observer for layer_root_N nodes
   let _currentLevelIdx = 0;
   let _xrReady         = false;
 
@@ -57,7 +58,9 @@ const ARManager = (() => {
   // 3D BabylonJS GUI menu (floats in world space, visible in AR headset)
   let _guiTexture   = null;   // AdvancedDynamicTexture for 3D plane
   let _guiMesh      = null;   // Plane mesh hosting the GUI
+  let _guiStack     = null;   // Stack of buttons
   let _guiVisible   = false;
+  let _laserDot     = null;
 
   // ── Init (call once after Renderer.init) ──────────────────
 
@@ -149,13 +152,66 @@ const ARManager = (() => {
     // Enable hit-test
     const featMgr = _xrBase.featuresManager;
     try {
-      _hitTest = featMgr.enableFeature(BABYLON.WebXRHitTest, 'stable', {
+      _hitTest = featMgr.enableFeature(BABYLON.WebXRHitTest, 'latest', {
         testOnPointerDownOnly: false,
       });
       _hitTest?.onHitTestResultObservable.add(_onHitTestResult);
     } catch(e) {
       console.warn('[ARManager] hit-test unavailable:', e.message);
     }
+
+    // Enable pointer selection feature
+    try {
+      const _xrPointer = featMgr.enableFeature(BABYLON.WebXRControllerPointerSelection, "latest", {
+        xrInput: _xrHelper.input,
+        enablePointerSelectionOnAllControllers: true,
+      });
+      if (_xrPointer && _xrPointer.onControllerAddedObservable) {
+        _xrPointer.onControllerAddedObservable.add(ctrl => {
+
+          ctrl.onFrameObservable.add(() => {
+            const ray = new BABYLON.Ray(BABYLON.Vector3.Zero(), BABYLON.Vector3.Forward());
+            ctrl.getWorldPointerRayToRef?.(ray);
+
+            const pick = _scene.pickWithRay(ray, m => m === _guiMesh);
+
+            if (pick?.hit) {
+              _laserDot.position.copyFrom(pick.pickedPoint);
+              _laserDot.isVisible = true;
+              const dist = BABYLON.Vector3.Distance(ray.origin, pick.pickedPoint);
++             _laserDot.scaling.setAll(dist * 0.02);
+              _laserDot.material.emissiveColor = new BABYLON.Color3(1, 0.6, 0.1);
+            } else {
+              _laserDot.isVisible = false;
+            }
+          });
+        });
+      };
+    } catch (e) {
+      console.warn("[ARManager] pointer selection not available", e.message);
+    }
+
+    // Enable controller model load
+    try {
+      if (BABYLON.WebXRControllerModelLoader) {
+        featMgr.enableFeature(BABYLON.WebXRControllerModelLoader, "latest");
+      }
+    } catch (e) {
+      console.warn("[ARManager] controller models not available", e.message);
+    }
+
+    // Model laser dot
+    _laserDot = BABYLON.MeshBuilder.CreateSphere("laser-dot", {
+      diameter: 0.01
+    }, _scene);
+    
+    const dotMat = new BABYLON.StandardMaterial("laser-dot-mat", _scene);
+    dotMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0.1);
+    dotMat.disableLighting = true;
+
+    _laserDot.material = dotMat;
+    _laserDot.isPickable = false;
+    _laserDot.isVisible = false;
 
     // Board root
     _boardRoot = new BABYLON.TransformNode('ar-board-root', _scene);
@@ -170,17 +226,35 @@ const ARManager = (() => {
     _buildReticle();
     _build3DMenu();
 
-    // Any mesh added while !_placed → hide it immediately (floor/wall tiles
-    // built by startFromLevel before placement must not be visible)
+    // Intercept new TransformNodes (layer_root_N) and parent them to _boardRoot.
+    // This is the correct hook in the multi-layer renderer — each layer's tiles
+    // are children of a layer_root TransformNode, so parenting the root is enough
+    // to bring the entire floor into AR space at the correct scale.
+    _nodeObsHandle = _scene.onNewTransformNodeAddedObservable.add(node => {
+      if (!_arActive || !_boardRoot) return;
+      if (_shouldSkip(node)) return;
+      if (/^layer_root_/.test(node.name)) {
+        if (!_placed) {
+          node.setEnabled(false);
+          return;
+        }
+        node.parent = _boardRoot;
+      }
+    });
+
+    // Mesh observer: only handle root-level meshes that are NOT children of a
+    // layer_root (e.g. player mesh, portal rings, reticle). Layer tile meshes
+    // are already covered by the TransformNode observer above.
     _meshObsHandle = _scene.onNewMeshAddedObservable.add(mesh => {
       if (!_arActive || !_boardRoot) return;
       if (_shouldSkip(mesh)) return;
+      // Skip meshes that already have a parent (they belong to a layer_root subtree)
+      if (mesh.parent) return;
       if (!_placed) {
-        // Hide until board is placed; will be rebuilt fresh after placement
         mesh.isVisible = false;
         return;
       }
-      if (!mesh.parent) mesh.parent = _boardRoot;
+      mesh.parent = _boardRoot;
     });
 
     // Auto-place board 1m ahead immediately so user sees the level right away
@@ -233,6 +307,10 @@ const ARManager = (() => {
     if (_meshObsHandle) {
       try { _scene.onNewMeshAddedObservable.remove(_meshObsHandle); } catch(_){}
       _meshObsHandle = null;
+    }
+    if (_nodeObsHandle) {
+      try { _scene.onNewTransformNodeAddedObservable.remove(_nodeObsHandle); } catch(_){}
+      _nodeObsHandle = null;
     }
 
     const domOv = document.getElementById('ar-dom-overlay');
@@ -320,9 +398,10 @@ const ARManager = (() => {
     if (fwd.length() < 0.01) fwd.z = 1;
     fwd.normalize().scaleInPlace(0.5); // 50 cm in front
     pos.addInPlace(fwd);
-    pos.y = cam.globalPosition.y - 0.3;  // 0.3 (30 cm under height), 0.8 ~floor level
+    pos.y = cam.globalPosition.y - 0.5;  // 0.5 (50 cm under height), 0.8 ~floor level
 
     _boardRoot.position.copyFrom(pos);
+    _boardRoot.rotation.y -= 45 * Math.PI / 180;
     // Face the board toward the camera
     _boardRoot.setEnabled(true);
     _placed = true;
@@ -331,6 +410,19 @@ const ARManager = (() => {
 
     const arHud = document.getElementById('ar-hud');
     if (arHud) { arHud.classList.remove('hidden'); arHud.style.display = 'flex'; }
+
+    // Re-parent any layer_root TransformNodes already in the scene
+    // (created before _nodeObsHandle was active — e.g. from a pre-built level)
+    _scene.transformNodes.forEach(n => {
+      if (/^layer_root_/.test(n.name) && !_shouldSkip(n)) {
+        n.parent = _boardRoot;
+        n.setEnabled(true);
+      }
+    });
+    // Also catch root-level meshes (player, portals) with no parent
+    _scene.meshes.forEach(m => {
+      if (!_shouldSkip(m) && !m.parent) m.parent = _boardRoot;
+    });
 
     // Build level — new meshes will be parented to boardRoot by _meshObsHandle
     EventBus.emit('ar:rebuild-level', { levelIdx: _currentLevelIdx });
@@ -362,6 +454,21 @@ const ARManager = (() => {
   // an interactive panel on a plane billboard — visible in the headset
   // without needing the DOM overlay layer.
 
+  const genericBtns = [
+    { label: '▶  RESUME',          color: '#ff6a00', action: () => _toggle3DMenu(false) },
+    { label: '↺  RETRY CHAMBER',   color: '#9090a8', action: () => { _toggle3DMenu(false); GameLogic.retryLevel?.(); } },
+    { label: '⊕  REPOSITION BOARD',color: '#9090a8', action: () => { _toggle3DMenu(false); resetPlacement(); } },
+    { label: '✕  EXIT AR',         color: '#9090a8', action: () => { _toggle3DMenu(false); exit(); } },
+  ];
+  const winBtns = [
+    { label: '▶  NEXT CHAMBER',    color: '#ff6a00', action: () => { _toggle3DMenu(false); GameLogic.nextLevel?.(); } },
+    { label: '✕  EXIT AR',         color: '#9090a8', action: () => { _toggle3DMenu(false); exit(); } },
+  ];
+  const failBtns = [
+    { label: '↺  RETRY CHAMBER',   color: '#9090a8', action: () => { _toggle3DMenu(false); GameLogic.retryLevel?.(); } },
+    { label: '✕  EXIT AR',         color: '#9090a8', action: () => { _toggle3DMenu(false); exit(); } },
+  ];
+
   function _build3DMenu() {
     if (!window.BABYLON?.GUI) {
       console.warn('[ARManager] BABYLON.GUI not loaded — 3D menu unavailable');
@@ -375,7 +482,7 @@ const ARManager = (() => {
     _guiMesh.name = 'ar-3d-menu';
     _guiMesh.isPickable = true;
     _guiMesh.isVisible  = false;       // hidden until _toggle3DMenu(true)
-    _guiMesh.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+    _guiMesh.billboardMode = BABYLON.Mesh.BILLBOARDMODE_Y;
     _guiMesh.renderingGroupId = 2;     // render on top of game geometry
     _guiMesh.setEnabled(true);         // keep enabled so GUI renders; control via isVisible
 
@@ -401,56 +508,78 @@ const ARManager = (() => {
     title.top      = '12px';
     bg.addControl(title);
 
-    const stack = new BABYLON.GUI.StackPanel('menu-stack');
-    stack.width  = '88%';
-    stack.height = '220px';
-    stack.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
-    stack.top = '20px';
-    bg.addControl(stack);
+    _guiStack = new BABYLON.GUI.StackPanel('menu-stack');
+    _guiStack.width  = '88%';
+    _guiStack.height = '220px';
+    _guiStack.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+    _guiStack.top = '20px';
+    bg.addControl(_guiStack);
+  }
 
-    const buttons = [
-      { label: '▶  RESUME',          color: '#ff6a00', action: () => _toggle3DMenu(false) },
-      { label: '↺  RETRY CHAMBER',   color: '#9090a8', action: () => { _toggle3DMenu(false); GameLogic.retryLevel?.(); } },
-      { label: '⊕  REPOSITION BOARD',color: '#9090a8', action: () => { _toggle3DMenu(false); resetPlacement(); } },
-      { label: '✕  EXIT AR',         color: '#9090a8', action: () => { _toggle3DMenu(false); exit(); } },
-    ];
+  // Change buttons in the GUI stack panel
+  function _setMenuButtons(buttons = []) {
+    if (!_guiStack) return;
+
+    _guiStack.clearControls();
 
     buttons.forEach(({ label, color, action }) => {
       const btn = BABYLON.GUI.Button.CreateSimpleButton('', label);
-      btn.width     = '100%';
-      btn.height    = '46px';
-      btn.color     = color;
-      btn.fontSize  = 17;
+      btn.width = '100%';
+      btn.height = '46px';
+      btn.color = color;
+      btn.fontSize = 17;
       btn.fontFamily = 'monospace';
       btn.thickness = 1;
       btn.cornerRadius = 4;
       btn.background = 'transparent';
       btn.paddingBottom = '6px';
       btn.onPointerUpObservable.add(action);
-      stack.addControl(btn);
+      btn.onPointerEnterObservable.add(() => {
+        btn.background = '#8f5c37b6';
+      });
+      btn.onPointerOutObservable.add(() => {
+        btn.background = 'transparent';
+      });
+      _guiStack.addControl(btn);
     });
   }
 
-  function _toggle3DMenu(forceState) {
+  // Toggle on off the GUI menu with buttons setting
+  function _toggle3DMenu(forceState, buttons = []) {
     _guiVisible = forceState !== undefined ? forceState : !_guiVisible;
     if (!_guiMesh) return;
 
     if (_guiVisible) {
+      // Update buttons
+      _setMenuButtons(buttons.length > 0 ? buttons : genericBtns);
+
       // Position 0.5m ahead of camera, at eye level
       const cam = _xrBase?.camera;
       if (cam) {
         const pos = cam.globalPosition.clone();
         const fwd = cam.getForwardRay(1).direction.clone();
         fwd.y = 0;
-        if (fwd.length() < 0.01) fwd.z = -1;
-        fwd.normalize().scaleInPlace(0.5);
+        if (fwd.length() < 0.01) fwd.z = -1.0;
+        // fwd.normalize().scaleInPlace(0.8);
         pos.addInPlace(fwd);
+        // pos.y += 0.05;
         _guiMesh.position.copyFrom(pos);
       }
       _guiMesh.isVisible = true;
     } else {
+      // Clear buttons
+      _setMenuButtons([]);
       _guiMesh.isVisible = false;
+      if (_laserDot) _laserDot.isVisible = false;
     }
+  }
+
+  // Win/Fail 3DGUI Menus
+  function show3DWin(){
+    _toggle3DMenu(true, winBtns);
+  }
+  function show3DFail(){
+    _toggle3DMenu(true, failBtns);
   }
 
   // Also build the win panel in 3D space
@@ -471,7 +600,7 @@ const ARManager = (() => {
   //
   // LEFT controller:
   //   Thumbstick       → move player
-  //   Menu button      → AR pause menu
+  //   X button         → AR pause menu
 
   function _setupControllerInput() {
     const input = _xrHelper?.input;
@@ -585,7 +714,7 @@ const ARManager = (() => {
               // Normal: move player
               if (Math.abs(x) < 0.5 && Math.abs(y) < 0.5) return;
               EventBus.emit('ar:controller-action',{
-                action: Math.abs(x)>=Math.abs(y)?(x>0?'right':'left'):(y>0?'down':'up')
+                action: Math.abs(x)>=Math.abs(y)?(x>0?'right':'left'):(y>0?'up':'down')
               });
             });
         }
@@ -598,14 +727,15 @@ const ARManager = (() => {
             ?.onAxisValueChangedObservable.add(({x,y}) => {
               if (Math.abs(x)<0.5 && Math.abs(y)<0.5) return;
               EventBus.emit('ar:controller-action',{
-                action: Math.abs(x)>=Math.abs(y)?(x>0?'right':'left'):(y>0?'down':'up')
+                action: Math.abs(x)>=Math.abs(y)?(x>0?'right':'left'):(y>0?'up':'down')
               });
             });
 
-          // Menu button → toggle 3D GUI menu
-          mc.getComponent('menu-button')?.onButtonStateChangedObservable.add(s => {
-            if (s.pressed) _toggle3DMenu();
-          });
+          // X button → toggle 3D GUI menu
+          ['x-button'].forEach(id =>
+            mc.getComponent(id)?.onButtonStateChangedObservable.add(s => {
+              if (s.pressed) _toggle3DMenu();
+            }));
         }
       });
     });
@@ -644,6 +774,7 @@ const ARManager = (() => {
     init, isSupported, enter, exit,
     placeBoardOnTap, lockBoard, resetPlacement,
     rescaleBoard, rotateBoard,
+    show3DWin, show3DFail,
     isActive:      () => _arActive,
     isBoardPlaced: () => _placed,
     isReady:       () => _xrReady,

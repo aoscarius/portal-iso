@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="src/ui/ar.css?v=92cab65b" />
   <style>
     /* ── Camera buttons ────────────────────────────────── */
-    #btn-menu-from-game, #btn-fullscreen, #btn-orbit, #btn-enter-ar {
+    #btn-menu-from-game, #btn-editor-from-game, #btn-fullscreen, #btn-orbit, #btn-enter-ar {
       display: none;
       position: fixed; z-index: 600;
       width: 38px; height: 38px; top: 6px;
@@ -33,10 +33,12 @@
       touch-action: manipulation;
     }
     #btn-menu-from-game  { top: 54px; right: 8px; }
+    #btn-editor-from-game  { top: 54px; right: 8px; }
     #btn-fullscreen { top: 54px; right: 54px; }
     #btn-orbit      { top: 54px; right: 100px; }
     #btn-enter-ar   { top: 54px; right: 146px; }
     #btn-menu-from-game:hover,
+    #btn-editor-from-game:hover,
     #btn-fullscreen:hover,
     #btn-orbit:hover,
     #btn-enter-ar:hover { color: #e2e2ee; border-color: #ff6a00; }
@@ -276,12 +278,12 @@
       <p class="subtitle">APERTURE ISOMETRIC LABORATORIES<br><span style="font-size:8px;letter-spacing:2px;color:#ff6a00;opacity:.7">MULTI-LAYER · SOLUTION B</span></p>
       <div class="menu-divider"></div>
       <nav class="menu-nav">
-        <button class="menu-btn primary" id="btn-play"       data-i18n="menu_play">▶ INITIALIZE TUTORIAL</button>
-        <button class="menu-btn"         id="btn-play-multi" data-i18n="menu_multi">⬡ CHAMBERS MULTI-FLOOR</button>
-        <button class="menu-btn"         id="btn-infinite"   data-i18n="menu_infinite">◈ PROCEDURAL CHAMBERS</button>
-        <button class="menu-btn"         id="btn-multi-gen"  data-i18n="menu_multi_infinite">⬡ RANDOM CHAMBERS MULTI-FLOOR</button>
+        <button class="menu-btn primary" id="btn-play"       data-i18n="menu_play">▶ INITIALIZE TESTS</button>
+        <button class="menu-btn"         id="btn-play-multi" data-i18n="menu_multi">▶ CHAMBERS MULTI-FLOOR</button>
+        <button class="menu-btn"         id="btn-infinite"   data-i18n="menu_infinite">♾︎ PROCEDURAL CHAMBERS</button>
+        <button class="menu-btn"         id="btn-multi-gen"  data-i18n="menu_multi_infinite">♾︎ PROCEDURAL CHAMBERS MULTI-FLOOR</button>
         <!-- AR button shown only when WebXR is available -->
-        <button class="menu-btn"         id="ar-entry-btn">◈ PLAY IN AR</button>
+        <button class="menu-btn"         id="ar-entry-btn" >◈ PLAY IN AR</button>
         <button class="menu-btn"         id="btn-editor">⬡ LEVEL EDITOR</button>
         <button class="menu-btn"         id="btn-settings">⚙ SETTINGS</button>
       </nav>
@@ -289,9 +291,9 @@
         AR requires HTTPS + Chrome on Android or Safari on iOS 15+
       </div>
       <div class="system-info">
-        <span>SYS: APERTURE SCIENCE v2.0</span>
+        <span>SYS: APERTURE SCIENCE v2.5</span>
         <span>STATUS: <span class="blink">OPERATIONAL</span></span>
-        <span data-i18n="menu_chambers">CHAMBERS: 10</span>
+        <span data-i18n="menu_chambers">LOADED CHAMBERS:</span><span id="chambers-cnt">10</span>
       </div>
     </div>
   </div>
@@ -422,7 +424,7 @@
   ════════════════════════════════════════════════════════ -->
   <div id="hud" class="hud hidden">
     <div class="hud-top">
-      <div class="hud-cell">TEST <span id="level-num">01</span></div>
+      <div class="hud-cell">TEST: <span id="level-num">01</span></div>
       <div class="hud-cell center" id="hud-title">CHAMBER LOADING…</div>
       <div class="hud-cell right">STEPS: <span id="step-count">0</span></div>
     </div>
@@ -631,7 +633,8 @@
   </div><!-- #ar-dom-overlay -->
 
   <!-- ── Camera / AR buttons (body-level: always visible during gameplay) ── -->
-  <button id="btn-menu-from-game" title="Exit">✕</button>
+  <button id="btn-menu-from-game"   title="Exit">✕</button>
+  <button id="btn-editor-from-game" title="Exit">✕</button>
   <button id="btn-fullscreen"     title="Fullscreen">⛶</button>
   <button id="btn-orbit"          title="Orbit / iso camera">⊙</button>
   <button id="btn-enter-ar"       title="Enter AR mode">◈</button>

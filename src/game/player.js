@@ -276,18 +276,24 @@ const Player = (() => {
     if (result.pushCube) {
       const { fromX, fromZ, toX, toZ } = result.pushCube;
       const origTile = Physics.getTile(toX, toZ, currentLayer);
-      Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR, currentLayer);
+      if (Physics.baseTile(fromX, fromZ, currentLayer) === CONSTANTS.TILE.CUBE)
+        Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR, currentLayer);
+      else
+        Physics.popTile(fromX, fromZ, CONSTANTS.TILE.FLOOR, currentLayer);
+      Physics.pushTile(toX, toZ, CONSTANTS.TILE.CUBE, currentLayer);
       Renderer.moveCubeMesh(fromX, fromZ, toX, toZ, currentLayer);
       EventBus.emit('cube:moved', { fromX, fromZ, toX, toZ, layer: currentLayer, origTile });
-      Physics.setTile(toX, toZ, CONSTANTS.TILE.CUBE, currentLayer);
     }
 
     // Push movable
     if (result.pushMovable) {
       const { fromX, fromZ, toX, toZ } = result.pushMovable;
       const origTile = Physics.getTile(toX, toZ, currentLayer);
-      Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR, currentLayer);
-      Physics.setTile(toX, toZ, CONSTANTS.TILE.MOVABLE, currentLayer);
+      if (Physics.baseTile(fromX, fromZ, currentLayer) === CONSTANTS.TILE.MOVABLE)
+        Physics.setTile(fromX, fromZ, CONSTANTS.TILE.FLOOR, currentLayer);
+      else
+        Physics.popTile(fromX, fromZ, CONSTANTS.TILE.FLOOR, currentLayer);
+      Physics.pushTile(toX, toZ, CONSTANTS.TILE.MOVABLE, currentLayer);
       Renderer.moveMovableMesh(fromX, fromZ, toX, toZ, currentLayer);
       EventBus.emit('movable:moved', { fromX, fromZ, toX, toZ, layer: currentLayer, origTile });
     }

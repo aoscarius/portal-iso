@@ -53,13 +53,13 @@ const LaserSystem = (() => {
 
     levelData.lasers.forEach(laser => {
       const hit = _traceLaser(laser.emitter, laser.dir, laser.receiverId, laser);
-      receiverStates[laser.receiverId] = hit;
+      receiverStates[laser.receiverId] = hit.isTarget;
 
       // Fire events when receiver state changes
       if (hit !== prevStates[laser.receiverId]) {
         EventBus.emit('laser:receiver-changed', {
           id:     laser.receiverId,
-          active: hit,
+          active: hit.isTarget,
         });
       }
     });
@@ -108,7 +108,7 @@ const LaserSystem = (() => {
       if (tile === CONSTANTS.TILE.RECEIVER) {
         _drawSegment(pos, { x: nx, z: nz }, layerY, layerIdx);
         const key = `${nx}_${nz}`;
-        return key === targetReceiverId;
+        return { key:key, isTarget:(key === targetReceiverId) };
       }
 
       // Hit any solid or player — stop
@@ -116,13 +116,13 @@ const LaserSystem = (() => {
       const pLayer = Player.getLayer ? Player.getLayer() : 0;
       if (isSolid(tile) || (pPos.x === nx && pPos.z === nz && pLayer === layerIdx)) {
         _drawSegment(pos, { x: nx, z: nz }, layerY, layerIdx);
-        return false;
+        return { key:`null`, isTarget:false };
       }
 
       _drawSegment(pos, { x: nx, z: nz }, layerY, layerIdx);
       pos = { x: nx, z: nz };
     }
-    return false;
+    return { key:`null`, isTarget:false };
   }
 
   // ── Mesh drawing ─────────────────────────────────────────

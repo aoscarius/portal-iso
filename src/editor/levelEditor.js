@@ -28,7 +28,7 @@ const LevelEditor = (() => {
   let levelName = 'CUSTOM CHAMBER';
   let levelHint = 'Custom level — proceed to the exit.';
   let amicaScript = '';
-  let levelDialogue = [];
+  let levelDialogue = {};
   let selectedTile  = CONSTANTS.TILE.FLOOR;
   let activeTool    = 'paint';
   let isPainting    = false;
@@ -192,14 +192,12 @@ const LevelEditor = (() => {
       _setStatus(`Grid resized to ${w}×${h}`);
     });
 
-    // Clear grid
-    document.getElementById('btn-clear-level')?.addEventListener('click', () => {
-      _resetToEmpty(gridW, gridH);
-      _updateLayerTabs();
-      _resizeCanvas();
-      _render();
-      _refreshLinkPanel();
-      _setStatus('Grid cleared.');
+    // Resize grid
+    document.getElementById('btn-resize-grid')?.addEventListener('click', () => {
+      const w = Math.max(4, Math.min(24, parseInt(document.getElementById('grid-w').value, 10)));
+      const h = Math.max(4, Math.min(24, parseInt(document.getElementById('grid-h').value, 10)));
+      _resizeAllLayers(w, h);
+      _setStatus(`Grid resized to ${w}×${h}`);
     });
 
     // Clipboard export
@@ -575,14 +573,19 @@ const LevelEditor = (() => {
     const allLasers = [];
     _layers.forEach((g, li) => {
       (_lasersByLayer[li] || []).forEach(l => {
-        let rx = l.emitter.x, rz = l.emitter.z, rid = l.receiverId;
-        for (let s = 0; s < 20; s++) {
-          rx += l.dir.dx; rz += l.dir.dz;
-          if (rx < 0 || rx >= gridW || rz < 0 || rz >= gridH) break;
-          if (g[rz][rx] === T.RECEIVER) { rid = `${rx}_${rz}`; break; }
-          if (isSolid(g[rz][rx])) break;
+        // Check 1 rows upper and 1 rows down the laser direction for a receiver target
+        let found = false; for (let off = -1; off <= 1 && !found; off++) {
+          // let rx = l.emitter.x, rz = l.emitter.z, rid = l.receiverId;
+          for (let s = 0; s < 20; s++) {
+            const rx = l.emitter.x + l.dir.dx*s + (-l.dir.dz * off);
+            const rz = l.emitter.z + l.dir.dz*s + (l.dir.dx * off);
+            if (rx < 0 || rx >= gridW || rz < 0 || rz >= gridH) break;
+            if (g[rz][rx] === T.RECEIVER) { rid = `${rx}_${rz}`; found=true; break; }
+            // if (isSolid(g[rz][rx])) break;
+          }
         }
         allLasers.push({ emitter: { ...l.emitter, layer: li }, dir: l.dir, receiverId: rid });
+        console.log({ emitter: { ...l.emitter, layer: li }, dir: l.dir, receiverId: rid });
       });
     });
 
@@ -632,38 +635,38 @@ const LevelEditor = (() => {
 
     const expLevelName = typeof levelName === 'string'
       ? `{ en: '${levelName}', it: '${levelName}' }`
-      : JSON.stringify(levelName, null, 2);
+      : JSON.stringify(levelName, null, 4);
     const expLevelHint = typeof levelHint === 'string'
       ? `{ en: '${levelHint}', it: '${levelHint}' }`
-      : JSON.stringify(levelHint, null, 2);
+      : JSON.stringify(levelHint, null, 4);
     const expAmica = typeof amicaScript === 'string'
       ? `{ en: '${amicaScript.replace(/"/g, '\\"')}', it: '${amicaScript.replace(/"/g, '\\"')}' }`
-      : JSON.stringify(amicaScript, null, 2);
+      : JSON.stringify(amicaScript, null, 4);
 
     const layersStr = data.layers.map((l, li) =>
       `    { y: ${l.y}, grid: [\n${l.grid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ] }`
     ).join(',\n');
-    const gridStr = `grid: [\n${data.layers[0].grid.map(row => `    [${row.join(',')}]`).join(',\n')}\n  ]`
+    const gridStr = `[\n${data.layers[0].grid.map(row => `    [${row.join(',')}]`).join(',\n')}\n  ]`
 
     const fileContent = `// Level Export
 
 if (typeof LEVELS === 'undefined') LEVELS = [];
 LEVELS.push({
-  id: '${id}',
+    id: '${id}',
     name: ${expLevelName},
     hint: ${expLevelHint},
     width: ${gridW}, height: ${gridH},
     layers: [\n${layersStr}\n],
     grid: ${gridStr},
-    lasers: ${JSON.stringify(data.lasers ?? [], null, 2)},
-    links: ${JSON.stringify(data.links ?? [], null, 2)},
-    amica: ${expAmica},
+    lasers: ${JSON.stringify(data.lasers ?? [], null, 4)},
+    links: ${JSON.stringify(data.links ?? [], null, 4)},
+    amica: ${expAmica}
 });
 
 if (typeof DIALOGUE_SCRIPTS === 'undefined') DIALOGUE_SCRIPTS = [];
-DIALOGUE_SCRIPTS.push({
-  ${JSON.stringify(levelDialogue, null, 2)},
-});
+DIALOGUE_SCRIPTS.push(
+    ${JSON.stringify(levelDialogue ?? {}, null, 4)}
+);
 `;
 
     const blob = new Blob([fileContent], { type: 'text/javascript' });
@@ -679,14 +682,14 @@ DIALOGUE_SCRIPTS.push({
     const layersStr = data.layers.map((l, li) =>
       `    { y: ${l.y}, grid: [\n${l.grid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ] }`
     ).join(',\n');
-    const gridStr = `grid: [\n${l.grid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ]`
+    const gridStr = `[\n${l.grid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ]`
 
     return `
     width: ${gridW}, height: ${gridH},
     layers: [\n${layersStr}\n],
     grid: ${gridStr},
-    lasers: ${JSON.stringify(data.lasers ?? [], null, 2)},
-    links: ${JSON.stringify(data.links ?? [], null, 2)},
+    lasers: ${JSON.stringify(data.lasers ?? [], null, 4)},
+    links: ${JSON.stringify(data.links ?? [], null, 4)},
     `;
   }
 
@@ -704,14 +707,15 @@ DIALOGUE_SCRIPTS.push({
         const parse = new Function('LEVELS', 'DIALOGUE_SCRIPTS', content);
         parse(tempLevels, tempDiag);
 
-        const data = tempLevels[0];
+        const data = tempLevels[0] || {};
+        const diag = tempDiag[0] || {};
         if (!data.width || !data.height) throw new Error('Invalid format');
         levelId = data.id;
         levelName = data.name;
         levelHint = data.hint || '';
         gridW = data.width; gridH = data.height;
         amicaScript = data.amica || '';
-        levelDialogue = tempDiag || [];
+        levelDialogue = diag;
 
         if (data.layers) {
           _layers        = data.layers.map(l => l.grid.map(row => [...row]));

@@ -8,7 +8,7 @@
 // ============================================================
 
 (async function () {
-
+  
   // ── 1. Preferences (must run before Renderer so CONSTANTS
   //       colours are patched before the first mesh is created) ──
 
@@ -37,6 +37,7 @@
   try {
     await LevelLoader.load((loaded, total, path) => {
       SplashScreen.setProgress(loaded, total, path);
+      document.getElementById("chambers-cnt").innerText = loaded;
     });
   } catch (_) { /* missing levels - skip */ }
 
@@ -282,6 +283,12 @@
     UIManager.showMainMenu();
   });
 
+  EventBus.on('game:to-editor', () => {
+    _infiniteMode = false;
+    GameLogic.unloadLevel();
+    UIManager.showEditor();
+  });
+
   EventBus.on('game:pause', () => UIManager.showMainMenu());
 
   EventBus.on('game:all-done', () => {
@@ -300,7 +307,7 @@
   EventBus.on('editor:open',  () => UIManager.showEditor());
   EventBus.on('editor:close', () => UIManager.showMainMenu());
   EventBus.on('editor:test',  (levelData) => {
-    UIManager.showGame();
+    UIManager.showGame(true);
     GameLogic.loadCustomLevel(levelData);
   });
 
