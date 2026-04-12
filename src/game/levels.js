@@ -34,7 +34,8 @@ const LevelLoader = (() => {
   function _loadLevelFile(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = src;
+      const genHash = () => Math.random().toString(36).substring(2, 10);
+      script.src = `${src}?v=${genHash()}`;
       script.onload = () => resolve(src);
       script.onerror = () => reject(new Error(`Failed to load ${src}`));
       document.body.appendChild(script);

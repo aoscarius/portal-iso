@@ -4,19 +4,67 @@
 // ============================================================
 
 const Particles = (() => {
-  let scene = null;
+  let _scene = null;
+  let _dotTexture = null;
+  let _nextId = 0;
 
   // Active particle systems stored by key for lifecycle management
   const systems = {};
 
+  function _uid(prefix) {
+    return `${prefix}_${Date.now()}_${_nextId++}`;
+  }
+
+  function _textureIsDisposed(tex) {
+    return !tex ||
+      tex.isDisposed === true ||
+      (typeof tex.isDisposed === 'function' && tex.isDisposed());
+  }
+
   function init(babylonScene) {
-    scene = babylonScene;
+    _scene = babylonScene;
+    if (_textureIsDisposed(_dotTexture)) {
+      _dotTexture = _makeDotTexture();
+    }
+  }
+
+  // ── Procedural dot texture ────────────────────────────────
+  // Draws a radial white-to-transparent gradient into a 32×32
+  // DynamicTexture so no external file is required.
+ 
+  function _makeDotTexture() {
+    if (!_scene) return null;
+    try {
+      const tex = new BABYLON.DynamicTexture('_particle_dot', { width: 32, height: 32 }, _scene, false);
+      const ctx = tex.getContext();
+      const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+      grad.addColorStop(0,   'rgba(255,255,255,1)');
+      grad.addColorStop(0.4, 'rgba(255,255,255,0.8)');
+      grad.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 32, 32);
+      tex.update();
+      tex.hasAlpha = true;
+      return tex;
+    } catch(e) {
+      console.warn('[Particles] Could not create dot texture:', e);
+      return null;
+    }
+  }
+ 
+  /** Assign the shared dot texture to a particle system. */
+  function _tex(ps) {
+    if (_textureIsDisposed(_dotTexture)) {
+      _dotTexture = _makeDotTexture();
+    }
+    if (_dotTexture) ps.particleTexture = _dotTexture;
+    return ps;
   }
 
   // ── Helper: create emitter anchor mesh ───────────────────
 
   function _emitter(name, pos) {
-    const m = BABYLON.MeshBuilder.CreateBox(name, { size: 0.01 }, scene);
+    const m = BABYLON.MeshBuilder.CreateBox(name, { size: 0.01 }, _scene);
     m.position = pos.clone();
     m.isVisible = false;
     return m;
@@ -31,16 +79,16 @@ const Particles = (() => {
    * @param {'A'|'B'} which
    */
   function portalBurst(gx, gz, which) {
-    if (!scene) return;
+    if (!_scene) return;
     const color = which === 'A'
       ? new BABYLON.Color4(0, 0.6, 1, 1)
       : new BABYLON.Color4(1, 0.42, 0, 1);
 
     const pos  = Renderer.gridToWorld(gx, gz);
     pos.y      = CONSTANTS.WALL_HEIGHT * 0.5;
-    const emit = _emitter(`pe_${which}_${Date.now()}`, pos);
+    const emit = _emitter(_uid(`pe_${which}`), pos);
 
-    const ps = new BABYLON.ParticleSystem(`ps_burst_${which}`, 80, scene);
+    const ps = _tex(new BABYLON.ParticleSystem(_uid(`ps_burst_${which}`), 80, _scene));
     ps.emitter              = emit;
     ps.minEmitBox           = new BABYLON.Vector3(-0.3, -0.3, -0.1);
     ps.maxEmitBox           = new BABYLON.Vector3( 0.3,  0.3,  0.1);
@@ -60,10 +108,9 @@ const Particles = (() => {
     ps.direction2           = new BABYLON.Vector3( 1, 2,  1);
     ps.start();
 
-    // Auto-stop after burst
     setTimeout(() => {
       ps.stop();
-      setTimeout(() => { ps.dispose(); emit.dispose(); }, 1000);
+      setTimeout(() => { ps.dispose(false); emit.dispose(); }, 1000);
     }, 120);
   }
 
@@ -75,7 +122,7 @@ const Particles = (() => {
    */
   function startPortalSwirl(gx, gz, which) {
     stopPortalSwirl(which);
-    if (!scene) return;
+    if (!_scene) return;
 
     const color = which === 'A'
       ? new BABYLON.Color4(0, 0.6, 1, 0.8)
@@ -83,22 +130,22 @@ const Particles = (() => {
 
     const pos  = Renderer.gridToWorld(gx, gz);
     pos.y      = CONSTANTS.WALL_HEIGHT * 0.5;
-    const emit = _emitter(`swirl_emit_${which}`, pos);
+    const emit = _emitter(_uid(`swirl_emit_${which}`), pos);
 
-    const ps = new BABYLON.ParticleSystem(`swirl_${which}`, 60, scene);
+    const ps = _tex(new BABYLON.ParticleSystem(_uid(`swirl_${which}`), 60, _scene));
     ps.emitter    = emit;
-    ps.minEmitBox = new BABYLON.Vector3(-0.5, -0.5, -0.05);
-    ps.maxEmitBox = new BABYLON.Vector3( 0.5,  0.5,  0.05);
+    ps.minEmitBox = new BABYLON.Vector3(-0.7, -0.4, -0.2);
+    ps.maxEmitBox = new BABYLON.Vector3( 0.7,  0.4,  0.2);
     ps.color1     = color;
     ps.color2     = color.clone();
     ps.colorDead  = new BABYLON.Color4(0, 0, 0, 0);
     ps.minSize    = 0.04; ps.maxSize   = 0.14;
     ps.minLifeTime = 0.5;  ps.maxLifeTime = 1.2;
-    ps.emitRate   = 30;
-    ps.minEmitPower = 0.2; ps.maxEmitPower = 0.6;
-    ps.direction1 = new BABYLON.Vector3(-0.3, -0.3, 0);
-    ps.direction2 = new BABYLON.Vector3( 0.3,  0.3, 0.1);
-    ps.gravity    = new BABYLON.Vector3(0, 0, 0);
+    ps.emitRate   = 40;
+    ps.minEmitPower = 0.6; ps.maxEmitPower = 1.4;
+    ps.direction1 = new BABYLON.Vector3(-0.4, 0.8, -0.2);
+    ps.direction2 = new BABYLON.Vector3( 0.4, 1.2,  0.2);
+    ps.gravity    = new BABYLON.Vector3(0, 0.25, 0);
     ps.start();
 
     systems[`swirl_${which}`] = { ps, emit };
@@ -109,8 +156,8 @@ const Particles = (() => {
     if (systems[key]) {
       systems[key].ps.stop();
       setTimeout(() => {
-        systems[key]?.ps.dispose();
-        systems[key]?.emit.dispose();
+        systems[key]?.ps?.dispose(false);
+        systems[key]?.emit?.dispose();
       }, 1200);
       delete systems[key];
     }
@@ -119,12 +166,12 @@ const Particles = (() => {
   // ── Teleport burst at player ─────────────────────────────
 
   function teleportBurst(gx, gz) {
-    if (!scene) return;
+    if (!_scene) return;
     const pos = Renderer.gridToWorld(gx, gz);
     pos.y     = CONSTANTS.TILE_SIZE * 0.8;
-    const emit = _emitter(`tele_${Date.now()}`, pos);
+    const emit = _emitter(_uid('tele_emit'), pos);
 
-    const ps = new BABYLON.ParticleSystem('tele_burst', 120, scene);
+    const ps = _tex(new BABYLON.ParticleSystem(_uid('tele_burst'), 120, _scene));
     ps.emitter    = emit;
     ps.minEmitBox = new BABYLON.Vector3(-0.4, 0, -0.4);
     ps.maxEmitBox = new BABYLON.Vector3( 0.4, 0.2, 0.4);
@@ -140,20 +187,20 @@ const Particles = (() => {
     ps.gravity    = new BABYLON.Vector3(0, -4, 0);
     ps.start();
 
-    setTimeout(() => { ps.stop(); setTimeout(() => { ps.dispose(); emit.dispose(); }, 1000); }, 150);
+    setTimeout(() => { ps.stop(); setTimeout(() => { ps.dispose(false); emit.dispose(); }, 1000); }, 150);
   }
 
   // ── Hazard embers (persistent ambient) ──────────────────
 
   function startHazardEmbers(gx, gz) {
     const key = `hazard_${gx}_${gz}`;
-    if (systems[key] || !scene) return;
+    if (systems[key] || !_scene) return;
 
     const pos = Renderer.gridToWorld(gx, gz);
     pos.y = 0.1;
-    const emit = _emitter(key + '_emit', pos);
+    const emit = _emitter(_uid(`${key}_emit`), pos);
 
-    const ps = new BABYLON.ParticleSystem(key, 40, scene);
+    const ps = _tex(new BABYLON.ParticleSystem(_uid(key), 40, _scene));
     ps.emitter    = emit;
     ps.minEmitBox = new BABYLON.Vector3(-0.8, 0, -0.8);
     ps.maxEmitBox = new BABYLON.Vector3( 0.8, 0,  0.8);
@@ -174,12 +221,12 @@ const Particles = (() => {
   // ── Button press flash ───────────────────────────────────
 
   function buttonFlash(gx, gz) {
-    if (!scene) return;
+    if (!_scene) return;
     const pos = Renderer.gridToWorld(gx, gz);
     pos.y = 0.15;
-    const emit = _emitter(`btn_flash_${Date.now()}`, pos);
+    const emit = _emitter(_uid('btn_flash_emit'), pos);
 
-    const ps = new BABYLON.ParticleSystem('btn_flash', 60, scene);
+    const ps = _tex(new BABYLON.ParticleSystem(_uid('btn_flash'), 60, _scene));
     ps.emitter    = emit;
     ps.minEmitBox = new BABYLON.Vector3(-0.5, 0, -0.5);
     ps.maxEmitBox = new BABYLON.Vector3( 0.5, 0.1, 0.5);
@@ -194,17 +241,22 @@ const Particles = (() => {
     ps.direction2 = new BABYLON.Vector3( 0.5, 2,  0.5);
     ps.gravity    = new BABYLON.Vector3(0, -3, 0);
     ps.start();
-    setTimeout(() => { ps.stop(); setTimeout(() => { ps.dispose(); emit.dispose(); }, 600); }, 100);
+    setTimeout(() => { ps.stop(); setTimeout(() => { ps.dispose(false); emit.dispose(); }, 600); }, 100);
   }
 
   // ── Cleanup ──────────────────────────────────────────────
 
   function clearAll() {
     Object.keys(systems).forEach(k => {
-      systems[k]?.ps?.dispose();
+      systems[k]?.ps?.dispose(false);
       systems[k]?.emit?.dispose();
       delete systems[k];
     });
+
+    if (!_textureIsDisposed(_dotTexture)) {
+      _dotTexture.dispose();
+      _dotTexture = null;
+    }
   }
 
   return {

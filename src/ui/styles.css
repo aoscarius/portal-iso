@@ -77,7 +77,7 @@ body::before {
    ============================================================ */
 .overlay {
   position: fixed; inset: 0;
-  display: flex; align-items: center; justify-content: center;
+  display: none; align-items: center; justify-content: center;
   background: rgba(8,8,11,0.93);
   backdrop-filter: blur(3px);
   z-index: 100;

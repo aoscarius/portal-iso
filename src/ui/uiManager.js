@@ -71,14 +71,12 @@ const UIManager = (() => {
 
   function showWin({ steps, portals, isLast }) {
     DialoguePanel?.clear();
-    Minimap.setVisible(false);
     document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-editor-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
-    document.getElementById('btn-back-editor-win')?.style.setProperty('display', _fromEditor ? '' : 'none');
-    _showTouchControls(false);
+    document.getElementById('btn-back-editor-win')?.style.setProperty('display', _fromEditor ? 'block' : 'none');
     
     // In AR: show toast inside ar-dom-overlay instead of blocking overlay
     if (typeof ARManager !== 'undefined' && ARManager.isActive?.()) {
@@ -90,37 +88,42 @@ const UIManager = (() => {
         if (next)  next.style.display = isLast ? 'none' : '';
         toast.style.display = 'flex';
       }
-      if (ARManager.isActive?.()) ARManager.show3DWin?.();
+      if (!_isTouchDevice()) ARManager.show3DWin?.();
       return;
     }
+
+    Minimap.setVisible(false);
+    _showTouchControls(false);
 
     document.getElementById('win-steps').textContent   = steps;
     document.getElementById('win-portals').textContent = portals;
     const nextBtn = document.getElementById('btn-next-level');
     if (nextBtn) nextBtn.style.display = isLast ? 'none' : '';
+
     _show('win-overlay');
   }
 
   function showFail(message) {
     DialoguePanel?.clear();
     document.getElementById('fail-message').textContent = message;
-    Minimap.setVisible(false);
     document.getElementById('btn-menu-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-editor-from-game')?.classList.remove('cam-visible');
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
-    document.getElementById('btn-back-editor-fail')?.style.setProperty('display', _fromEditor ? '' : 'none');
-    _showTouchControls(false);
+    document.getElementById('btn-back-editor-fail')?.style.setProperty('display', _fromEditor ? 'block' : 'none');
 
     if (typeof ARManager !== 'undefined' && ARManager.isActive?.()) {
       const toast = document.getElementById('ar-fail-toast');
       if (toast) {
         toast.style.display = 'flex';
       }
-      if (ARManager.isActive?.()) ARManager.show3DFail?.();
+      if (!_isTouchDevice()) ARManager.show3DFail?.();
       return;
     }
+
+    Minimap.setVisible(false);
+    _showTouchControls(false);
 
     _show('fail-overlay');
   }

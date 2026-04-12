@@ -1,49 +1,175 @@
 # PORTAL ISO — Aperture Isometric Laboratories
 
-A fan-made isometric puzzle game inspired by Valve's Portal, built with [BabylonJS](https://www.babylonjs.com/).  
-No build tools required — open `index.html` with a local HTTP server and play.
+A fan-made isometric puzzle game inspired by Valve's Portal series, built with [BabylonJS](https://www.babylonjs.com/).  
+No build tools, no npm, no bundler — serve the folder and play.
 
 ---
 
 ## Quick Start
 
 ```bash
-# Option 1: Node.js (recommended)
-npx serve .
-
-# Option 2: Python
+# Python (zero dependencies)
 python3 -m http.server 8080
+# → http://localhost:8080
 
-# Option 3: VS Code
-# Install "Live Server" extension → right-click index.html → Open with Live Server
+# Node.js
+npx serve .
+# → http://localhost:3000
+
+# VS Code — "Live Server" extension → right-click index.html → Open with Live Server
+
+# HTTPS (required for AR / WebXR)
+python3 server.py      # uses certs/cert.pem + certs/key.pem (self-signed, localhost only)
+# → https://localhost:443
 ```
 
-Then open `http://localhost:3000` (or `8080`) in your browser.
-
-> **Note:** A local server is required because BabylonJS loads resources via HTTP(s).  
-> Opening `index.html` directly as `file://` will not work correctly.
+> Opening `index.html` as `file://` will not work — the level loader and BabylonJS require HTTP(S).
 
 ---
 
-## How to Play
+## Controls
+
+### Desktop
 
 | Key | Action |
 |-----|--------|
-| `W A S D` / Arrow Keys | Move the player |
+| `W` `A` `S` `D` / Arrow Keys | Move |
 | `Q` | Fire Portal A (blue) |
 | `R` | Fire Portal B (orange) |
-| `SPACE` / Click | Advance dialogue |
+| `Z` `X` `C` `V` | Aim portal without moving (Classic scheme) |
+| `SPACE` | Advance dialogue |
 | `M` | Toggle minimap |
 | `F1` | Restart current chamber |
 | `ESC` | Return to main menu |
+| Mouse wheel | Zoom |
+| Left-click floor | Walk to cell (BFS path) |
+| Left-click portal wall | Fire Portal A |
+| Right-click portal wall | Fire Portal B |
 
-### Mechanics
+### Touch (mobile / tablet)
 
-- **Portals** — Place two portals on glowing portal-walls (teal outline). Walk into one to emerge from the other. The portal gun also redirects laser beams.
-- **Pressure Plates** — Step on yellow buttons or push a cube onto them to open linked doors.
-- **Weighted Cubes** — Push cubes by walking into them. Cubes hold buttons down permanently.
-- **Lasers** — Red beams from emitters must reach circular receivers to unlock doors. Use portals to redirect beams around obstacles.
-- **Hazards** — Red tiles are instantly lethal. Use portals to bypass them.
+| Control | Action |
+|---------|--------|
+| D-pad bottom-left | Move |
+| **A** button (blue, bottom-right) | Portal A |
+| **B** button (orange, bottom-right) | Portal B |
+| Two-finger pinch | Zoom |
+
+### Control Schemes (Settings)
+
+| Scheme | Movement | Aim |
+|--------|----------|-----|
+| **Classic WASD** | WASD / arrows → 4 directions | `Z X C V` → aim without moving |
+| **Tank (FWD/TURN)** | `W`/`S` → forward/back · `A`/`D` → rotate 90° | — |
+
+---
+
+## Gameplay
+
+### Core Mechanics
+
+**Portal Gun** — Fire two portals onto teal-outlined *portal walls*. Walk into one to instantly emerge from the other. Portals also redirect laser beams.
+
+**Pressure Plates** — Yellow buttons open linked doors while weighted. Step on them yourself, push a cube onto them, or align a laser to a receiver linked to the door. Cubes keep buttons held permanently (unless the link has a `holdTime`).
+
+**Weighted Storage Cube** (`7`) — Push by walking into it. Can rest on buttons. Can block laser beams.
+
+**Weighted Glass Block** (`12`) — Same push mechanics as Cube, distinct visual; used in puzzles requiring a specific object type.
+
+**Lasers** — Orange beams travel from emitter tiles until they hit a wall, a cube, or a receiver tile. Redirect them through portals to reach receivers around obstacles. A beam reaching its receiver unlocks all doors linked to that receiver.
+
+**Hazards** — Red tiles kill instantly on contact. Use portals or route around them.
+
+**Stairs & Holes** — Multi-floor levels include `STAIR_UP` (`13`), `STAIR_DOWN` (`14`), and `FLOOR_HOLE` (`15`). Stepping on one triggers a vertical camera pan and floor switch.
+
+### Tile Reference
+
+| ID | Name | Notes |
+|----|------|-------|
+| `0` | Empty | No mesh rendered |
+| `1` | Floor | Basic walkable slab |
+| `2` | Wall | Solid; blocks movement, portals, lasers |
+| `3` | Player | Start position marker (renders as floor) |
+| `4` | Exit | Level exit — green glowing ring |
+| `5` | Button | Pressure plate — links to doors via `links[]` |
+| `6` | Door | Blocked until linked button/receiver activates it |
+| `7` | Cube | Weighted Storage Cube (pushable) |
+| `8` | Hazard | Lethal; triggers instant fail |
+| `9` | Portal Wall | Accepts portal shots; teal wireframe outline |
+| `10` | Emitter | Laser source; direction set in level data |
+| `11` | Receiver | Laser target; `id` = `"x_z"` coordinate string |
+| `12` | Movable | Weighted Glass Block (pushable) |
+| `13` | Stair Up | Ascend to the next layer |
+| `14` | Stair Down | Descend to the previous layer |
+| `15` | Floor Hole | Player falls through to layer below |
+
+---
+
+## Chambers
+
+The game ships with **20 hand-crafted chambers** plus **2 multi-floor demo chambers**.
+
+### Built-in chambers (01–20)
+
+| Range | Focus |
+|-------|-------|
+| 01–03 | Movement, portals, basic teleportation |
+| 04–06 | Pressure plates, doors, cube pushing |
+| 07–10 | Laser emitters/receivers, combined mechanics |
+| 11–15 | Extended — advanced portal routing, weight management |
+| 16–20 | All mechanics combined; multi-step solutions |
+
+The default `levels/levels.json` loads only **01–10**. Add `level_11.js` through `level_20.js` to the manifest to unlock the full sequence.
+
+### Multi-floor chambers
+
+| ID | Title | Floors |
+|----|-------|--------|
+| ML-01 | Ascension | 2 |
+| ML-02 | Stratification | 3 |
+
+Accessible via **▶ CHAMBERS MULTI-FLOOR** on the main menu.
+
+---
+
+## Procedural Generation
+
+### Single-floor
+
+**♾ PROCEDURAL CHAMBERS** on the main menu generates an endless supply of solvable puzzles.
+
+```js
+LevelGenerator.generate({
+  seed:       42,      // optional; omit for random
+  difficulty: 1,       // 1–5
+  width:      14,
+  height:     12,
+  id:         1000,
+});
+```
+
+| Difficulty | Content |
+|-----------|---------|
+| 1 | Floor, walls, portal walls, exit |
+| 2 | + More portal walls |
+| 3 | + Hazard tiles |
+| 4 | + Pressure plates + doors |
+| 5 | + Lasers + cubes |
+
+### Multi-floor
+
+**♾ PROCEDURAL CHAMBERS MULTI-FLOOR** generates 2–4-floor levels.
+
+```js
+LevelGeneratorMulti.generate({
+  seed:       42,
+  difficulty: 2,
+  width:      12,
+  height:     10,
+  numLayers:  2,     // 2–4 floors
+  id:         3000,
+});
+```
 
 ---
 
@@ -51,282 +177,336 @@ Then open `http://localhost:3000` (or `8080`) in your browser.
 
 ```
 portal-iso/
-├── index.html                    Entry point — all HTML overlays + script loading
-├── README.md                     This file
+├── index.html                   Entry: all HTML overlays, script loading order
+├── server.py                    HTTPS server for AR (Python, self-signed cert)
+├── certs/                       TLS certificate files (cert.pem, key.pem)
+├── favicon.ico
+│
+├── levels/
+│   ├── levels.json              Manifest — ordered file list loaded at startup
+│   └── level_1.js … level_20.js
+│
+├── assets/
+│   └── models/                  Optional GLB models (procedural fallback if absent)
 │
 └── src/
-    ├── main.js                   Bootstrap: init all modules, wire global events
+    ├── main.js                  Bootstrap: init subsystems, EventBus routing
     │
     ├── utils/
-    │   ├── constants.js          Global config: tile IDs, colors, camera angles, speeds
-    │   ├── eventBus.js           Pub/sub event system for decoupled module communication
-    │   ├── i18n.js               Internationalisation (i18n) system
-    │   └── thremes.js            Visual theme system
+    │   ├── constants.js         Tile IDs, colours, camera params, speeds
+    │   ├── eventBus.js          Minimal pub/sub (on / off / emit)
+    │   ├── i18n.js              EN + IT strings, AMICA lines, level dialogue scripts
+    │   └── themes.js            Visual themes: dark · lab · neon
     │
     ├── game/
-    │   ├── assetLoader.js        External GLB asset loader code with cloning and progress bar support
-    │   ├── tileTypes.js          Tile metadata: solid, walkable, portalable, editor colors
-    │   ├── levels.js             10 built-in chamber definitions (grid arrays + metadata)
-    │   ├── levelsGenerator.js    Experimental procedural level generator implementation
-    │   ├── renderer.js           BabylonJS 3D scene, isometric camera, mesh factory
-    │   ├── physics.js            Grid collision, portal raycast, cube-push validation
-    │   ├── player.js             Input handling, movement state machine, step events
-    │   ├── portalGun.js          Portal placement, teleportation logic, HUD portal dots
-    │   ├── laser.js              Laser trace (with portal bouncing), receiver detection
-    │   ├── particles.js          BabylonJS particle systems: portals, teleport, hazards
-    │   ├── audio.js              Procedural Web Audio API sounds (no audio files needed)
-    │   ├── amica.js              AMICA TTS + subtitle system (Web Speech API fallback)
-    │   ├── minimap.js            2D canvas minimap overlay (bottom-right corner)
-    │   └── gameLogic.js          Level lifecycle, puzzle state, win/fail, event routing
+    │   ├── tileTypes.js         Tile metadata for editor and renderer
+    │   ├── levels.js            LEVELS[] init + LevelLoader (fetch manifest → inject scripts)
+    │   ├── levels_multi.js      LEVELS_MULTI[] — two built-in multi-floor chambers
+    │   ├── levelGenerator.js    Procedural single-floor generator
+    │   ├── levelGenerator_multi.js  Procedural multi-floor generator
+    │   ├── assetLoader.js       GLB loader: InstantiateHierarchy + per-instance AnimationGroups
+    │   ├── renderer.js          BabylonJS scene, ArcRotateCamera, mesh factory,
+    │   │                        multi-layer TransformNodes, shadows, AR passthrough
+    │   ├── physics.js           Grid collision, portal raycast, push validation,
+    │   │                        layer transitions, BFS pathfind
+    │   ├── player.js            Keyboard/touch/AR input, movement FSM,
+    │   │                        classic/tank schemes, click-to-move BFS
+    │   ├── portalGun.js         Portal A/B placement, teleport resolution
+    │   ├── laser.js             Laser trace (portal-bouncing), receiver detection, mesh lines
+    │   ├── particles.js         Particle effects: portal burst/swirl, teleport, hazard, button
+    │   │                        ⚠ See Known Issues — particleTexture bug
+    │   ├── audio.js             Procedural Web Audio API SFX (no audio files)
+    │   ├── amica.js             AMICA TTS + floating subtitle (Web Speech API)
+    │   ├── minimap.js           2D canvas overlay: grid tiles, player, portals, laser lines
+    │   ├── arManager.js         WebXR immersive-ar lifecycle, hit-test, board anchoring
+    │   └── gameLogic.js         Level lifecycle, puzzle state machine, win/fail, event routing
     │
     ├── editor/
-    │   └── levelEditor.js        2D canvas level editor: paint/erase/fill, import/export JSON
+    │   └── levelEditor.js       Paint/erase/fill canvas editor, multi-layer,
+    │                            door-button link builder, laser direction, export/import
     │
     └── ui/
-        ├── styles.css            Main industrial UI stylesheet (CSS variables, all components)
-        ├── dialogue.css          RPG dialogue panel styles (avatar, typewriter, animations)
-        ├── dialoguePanel.js      RPG dialogue box: typewriter, speaker avatar, SPACE-to-advance
-        ├── dialogueScript.js     Per-level dialogue cues: intro, step triggers, event triggers
-        ├── spalshScreen.js       Initlial loader and splash screen logic implementation
-        └── uiManager.js          Overlay management: menu, win, fail, settings, level select
+        ├── styles.css           Industrial UI stylesheet (CSS custom properties)
+        ├── dialogue.css         RPG dialogue panel styles
+        ├── ar.css               AR HUD: scan ring, transform controls, toast overlays
+        ├── uiManager.js         Overlay routing: menus, win, fail, settings, level select
+        ├── dialoguePanel.js     Typewriter dialogue box with speaker avatar
+        ├── dialogueScript.js    Per-level cues: intro, step-based, event-based triggers
+        ├── splashScreen.js      Boot splash with animated aperture logo + progress bar
+        └── cutscenePlayer.js    Cutscene system: video / GLB animation / static image
 ```
 
 ---
 
 ## Architecture
 
-The project uses a **module pattern** (IIFE) with a central **EventBus** for communication. No framework, no bundler.
+All modules are **IIFEs** with frozen public APIs. No framework, no bundler, no classes.  
+Cross-module communication goes through **EventBus** exclusively.
 
 ```
-EventBus  ←────────────────────────────────────────────────┐
-    │                                                      │
-    ▼                                                      │
-Player ──(player:step, player:landed, player:bumped)──────►│
-PortalGun ──(portal:placed, portal:used, portal:miss)─────►│
-GameLogic ──(coordinates all modules below)                │
-    │                                                      │
-    ├── Physics      (collision, raycast)                  │
-    ├── Renderer     (BabylonJS meshes, animations)        │
-    ├── Particles    (visual effects)                      │
-    ├── LaserSystem  (beam trace, receiver state)─────────►│
-    ├── AudioEngine  (procedural SFX)                      │
-    ├── Minimap      (2D canvas overlay)                   │
-    ├── AMICA       (TTS + floating subtitles)             │
-    └── DialogueScript──► DialoguePanel (RPG box)          │
+main.js
+  │
+  ├─ Renderer.init()   → BabylonJS engine, scene, lights, shadow generator
+  ├─ AssetLoader.load() → preload GLBs, progress → SplashScreen
+  ├─ LevelLoader.load() → fetch levels.json, inject <script> tags
+  │
+  └─ GameLogic.startFromLevel(n)
+       │
+       ├─ Physics.init()        build mutable grid copy
+       ├─ Renderer.buildLevel() create all tile meshes
+       ├─ Player.init()         place player mesh, start input listeners
+       ├─ LaserSystem.loadLevel() trace initial beams
+       ├─ Minimap.loadLevel()   render grid to 2D canvas
+       ├─ DialogueScript.loadLevel()  register step + event triggers
+       │
+       └─ EventBus subscriptions
+            player:step     → AudioEngine, DialogueScript, step counter
+            player:landed   → tile checks (exit, hazard, button, stair)
+            cube:moved      → button weight tracking, laser update
+            portal:placed   → Particles, Minimap, LaserSystem.update()
+            portal:used     → Particles.teleportBurst(), audio
+            laser:receiver-changed → door open/close
+            player:layer-changed   → Renderer.setActiveLayer(), Minimap
 ```
 
-### Adding a New Level
+### Script load order (enforced by index.html tag order)
 
-Edit `src/game/levels.js` and add an entry to the `LEVELS` array:
+```
+i18n → themes → constants → eventBus   (no deps)
+→ tileTypes → levels                   (data; depends on CONSTANTS)
+→ audio → amica                        (depends on nothing game-specific)
+→ renderer → particles → physics       (depends on CONSTANTS, EventBus)
+→ portalGun → player                   (depends on Physics, Renderer)
+→ laser → minimap → arManager          (depends on Renderer, Physics)
+→ levelEditor                          (depends on TileTypes, CONSTANTS)
+→ dialoguePanel → dialogueScript → uiManager
+→ assetLoader                          (async; safe to load late)
+→ levelGenerator → levelGenerator_multi
+→ gameLogic                            (depends on all above)
+→ splashScreen → main                  (entry point)
+```
+
+---
+
+## Level Format
+
+Single-layer:
 
 ```js
-{
-  id: 11,
-  name: 'CHAMBER 11 — YOUR TITLE',
-  hint: 'Shown as HUD tip after AMICA speaks.',
+if (typeof LEVELS === 'undefined') LEVELS = [];
+
+LEVELS.push({
+  id: 5,
+  name: { en: 'CHAMBER 05 — BEAM SPLITTER', it: 'CAMERA 05 — ...' },
+  hint: { en: 'Redirect the laser to open the door.', it: '...' },
+  amica: { en: 'AMICA intro line shown on level load.', it: '...' },
   width: 12, height: 10,
+
   grid: [
-    // 0=empty  1=floor  2=wall   3=player(start)  4=exit
-    // 5=button 6=door   7=cube   8=hazard
-    // 9=portal-wall  10=emitter  11=receiver
+    // 2=wall  1=floor  3=player  4=exit  5=button  6=door
+    // 7=cube  8=hazard  9=portal-wall  10=emitter  11=receiver  12=movable
     [2,2,2,2,2,2,2,2,2,2,2,2],
-    [2,1,1,1,1,1,1,1,1,1,1,2],
-    [2,1,3,1,1,1,1,1,1,1,1,2],
-    // ... more rows ...
+    [2,3,1,1,9,1,1,1,1,1,1,2],
+    // ...
     [2,2,2,2,2,2,2,2,2,2,2,2],
+  ],
+
+  // Button/receiver → door links
+  links: [
+    { button:   { x:4, z:3 },  door: { x:7, z:5 } },
+    { button:   { x:2, z:6 },  door: { x:9, z:4 }, holdTime: 3 },  // auto-closes after 3s
+    { receiver: '8_3',          door: { x:6, z:5 } },
+  ],
+
+  // Laser definitions
+  lasers: [
+    { emitter: { x:1, z:5 }, dir: { dx:1, dz:0 }, receiverId: '8_3' },
+  ],
+});
+```
+
+Multi-layer:
+
+```js
+LEVELS.push({
+  id: 101,
+  name: 'CHAMBER ML-01 — ASCENSION',
+  width: 12, height: 10,
+  layers: [
+    { y: 0.0, grid: [ /* floor 0 */ ] },
+    { y: 3.0, grid: [ /* floor 1 — y = WALL_HEIGHT + TILE_HEIGHT */ ] },
   ],
   links: [
-    { button: {x:5, z:4}, door: {x:5, z:6} },       // button → door
-    { receiver: '8_3',    door: {x:9, z:4} },         // laser receiver → door
+    { button: { x:3, z:2, layer:0 }, door: { x:7, z:5, layer:1 } },
   ],
-  lasers: [
-    { emitter: {x:1, z:5}, dir: {dx:1, dz:0}, receiverId: '8_3' },
+});
+```
+
+**Add to manifest:** Edit `levels/levels.json` and append the filename to `"files"`.
+
+---
+
+## Level Editor
+
+**⬡ LEVEL EDITOR** → full canvas editor in the browser.
+
+| Tool | Action |
+|------|--------|
+| ✎ Paint | Click/drag to place selected tile |
+| ◻ Erase | Click/drag to clear to Empty |
+| ▣ Fill | Flood-fill from clicked cell |
+
+**Steps:**
+
+1. Set W × H and click **⊞ RESIZE**
+2. Select tile in the palette — paint on grid
+3. For **Emitter**: pick a laser direction (→ ← ↓ ↑) before placing
+4. For **Door**: place the door tile, then click it, then click a Button or Receiver to link
+5. Use the **FLOORS** tabs to add/remove layers
+6. **▶ TEST** — play immediately in the 3D view
+7. **↓ EXPORT** — download as a `.js` level file
+8. **⎘ COPY CLIPBOARD** — paste into an existing `level_N.js`
+9. **↑ IMPORT** — load a previously exported `.js` file
+
+---
+
+## 3D Models (GLB)
+
+Every tile falls back to procedural BabylonJS geometry if its GLB is absent.  
+Drop files into `assets/models/` to override:
+
+| File | Tile | Animations needed |
+|------|------|-------------------|
+| `floor.glb` | Floor | — |
+| `wall.glb` | Wall | — |
+| `portal_wall.glb` | Portal wall | — |
+| `door.glb` | Door | `open`, `close` |
+| `button.glb` | Pressure plate | `press`, `release` |
+| `cube.glb` | Weighted Cube | — |
+| `movable.glb` | Glass Block | — |
+| `exit.glb` | Exit | — |
+| `hazard.glb` | Hazard | — |
+| `emitter.glb` | Laser emitter | — |
+| `receiver.glb` | Laser receiver | — |
+| `player.glb` | Player | — |
+
+Animation names are case-insensitive. `AssetLoader` rebuilds `AnimationGroup` targets per-instance via `InstantiateHierarchy()` to prevent null-target crashes.
+
+---
+
+## Dialogue System
+
+AMICA commentary fires at level load, on step milestones, and on game events.
+
+All text lives in `src/utils/i18n.js` under `SCRIPTS`. `DialogueScript` reads via `I18n.getLevelScripts(id)` at each level load so language changes take effect next time.
+
+```js
+// In i18n.js SCRIPTS map:
+5: {
+  intro: {
+    speaker: 'amica',
+    lines: {
+      en: ["First line.", "Second line."],
+      it: ["Prima riga.", "Seconda riga."],
+    },
+  },
+  steps: [
+    { at: 10, lines: { en: ["You've taken 10 steps."] } },
   ],
-  amica: "Your AMICA opening line here.",
+  events: {
+    'door:opened':  { lines: { en: ["The door opens. How convenient."] } },
+    'portal:placed': { lines: { en: ["Portal placed. Physics will follow."] } },
+  },
 },
 ```
-
-Then add a script entry in `src/ui/dialogueScript.js` under the matching `id`.
-
-### Using the Level Editor
-
-1. From the main menu, click **⬡ LEVEL EDITOR**
-2. Select a tile type from the palette (left sidebar)
-3. Paint on the canvas (right-click erases)
-4. Use **FILL** tool for large areas
-5. For **EMITTER** tiles, select a laser direction (→ ← ↓ ↑) before painting
-6. Click **▶ TEST** to play your level immediately
-7. Click **↓ EXPORT** to save as JSON; **↑ IMPORT** to reload
-
----
-
-## Feature List
-
-| Feature | Status |
-|---------|--------|
-| Isometric 3D view (BabylonJS) | ✅ |
-| Ortho 3D view (BabylonJS) | ✅ |
-| Portal placement & teleportation | ✅ |
-| Grid collision (walls, doors) | ✅ |
-| Cube push mechanics | ✅ |
-| Button → door links | ✅ |
-| Laser emitter / receiver system | ✅ |
-| Laser redirection through portals | ✅ |
-| Hazard tiles (lethal) | ✅ |
-| 10 built-in test chambers | ✅ |
-| Procedural audio (Web Audio API) | ✅ |
-| AMICA TTS dialogue (Web Speech) | ✅ |
-| RPG dialogue panel (typewriter) | ✅ |
-| Per-level step & event cues | ✅ |
-| BabylonJS particle effects | ✅ |
-| 2D minimap overlay | ✅ |
-| Player hop animation | ✅ |
-| Industrial ceiling & lighting | ✅ |
-| Level editor (paint/erase/fill) | ✅ |
-| Export / import levels as JSON | ✅ |
-| Settings panel (audio, TTS, etc.) | ✅ |
-| Level select screen | ✅ |
-| Win / fail overlays with stats | ✅ |
-
----
-
-## Browser Compatibility
-
-| Browser | Support |
-|---------|---------|
-| Chrome 90+ | ✅ Full (TTS + Web Audio) |
-| Firefox 88+ | ✅ Full |
-| Safari 15+ | ✅ Full |
-| Edge 90+ | ✅ Full |
-
-> **TTS Note:** AMICA voice synthesis requires the browser to have installed voices.  
-> If no voice is available, the dialogue panel falls back to text-only (subtitles still appear).
-
----
-
-## Augmented Reality (WebXR) _Experimental_
-
-Portal ISO supports **Mixed Reality on flat surfaces** via the WebXR Device API.
-
-### Requirements
-
-| Platform | Minimum |
-|----------|---------|
-| Android  | Chrome 81+, ARCore installed |
-| iOS      | Safari 15+ (limited) |
-| Desktop  | Chrome/Edge with WebXR Emulator extension |
-| Protocol | **HTTPS required** (or `localhost`) |
-
-### How it works
-
-1. From the main menu, tap **◈ ENTER AR MODE** (in game you can use upper right button)
-2. Point your camera at a flat surface (table, floor)
-3. A scanning reticle appears when a surface is detected
-4. **Tap** to anchor the game board to that surface
-5. The full game plays on your real table at ~30 cm scale
-
-### AR Controls (on-screen)
-
-| Control | Action |
-|---------|--------|
-| D-pad (left side) | Move player |
-| **A** button (blue) | Fire Portal A |
-| **B** button (orange) | Fire Portal B |
-| **+** / **−** | Scale board up / down |
-| **↺** / **↻** | Rotate board left / right |
-| **✕ AR** | Exit AR session |
-
-### Architecture
-
-```
-src/game/
-└── arManager.js    WebXR session lifecycle, hit-test, board anchoring
-
-src/ui/
-└── ar.css       AR overlay styles (scan ring, D-pad, portal buttons)
-```
-
-**`arManager.js`** requests an `immersive-ar` session with:
-- `hit-test` — continuous raycasting against detected planes for the reticle
-- `local` reference space — stable origin anchored to the real world
-- `dom-overlay` — the `#ar-overlay` div is composited into the XR view
-
-The game board is attached to a `BABYLON.TransformNode` (`ar-board-root`) scaled to `AR_BOARD_METRES / WORLD_UNITS` (≈ 0.015). All level meshes are parented under this node, so moving/scaling the root repositions the entire board.
-
-**`arControls.js`** emits the same EventBus events (`ar:move`, `ar:portal`) that are consumed by the existing `Player` and `PortalGun` modules — no changes to game logic were needed.
-
-### Testing on Desktop
-
-Install the [WebXR API Emulator](https://chrome.google.com/webstore/detail/webxr-api-emulator) extension for Chrome or Firefox, then open DevTools → WebXR tab to simulate an AR-capable device.
-
----
-
-## Credits
-
-- Engine: [BabylonJS](https://www.babylonjs.com/) (CDN, no install needed)
-- Fonts: [Share Tech Mono](https://fonts.google.com/specimen/Share+Tech+Mono) + [Rajdhani](https://fonts.google.com/specimen/Rajdhani) (Google Fonts)
-- Concept: inspired by Valve's Portal series (fan project, not affiliated)
-
----
-
-*"The cake is a lie. The documentation is not."*  
-— Aperture Science Technical Writing Division
 
 ---
 
 ## Augmented Reality (WebXR)
 
-Portal ISO supports **immersive-ar** via the WebXR Device API.  
-The entire test chamber is projected onto a real flat surface through your device's camera.
+The entire test chamber renders onto a real surface through your camera.
 
 ### Requirements
 
-| Requirement | Detail |
-|-------------|--------|
-| **HTTPS** | WebXR requires a secure context (`https://` or `localhost`) |
-| **Browser** | Chrome 81+ on Android · Safari 15.4+ on iOS/iPadOS |
-| **Device** | ARCore (Android) or ARKit (iOS) capable device |
-| **Feature** | `immersive-ar` + `hit-test` session features |
+| | |
+|--|--|
+| **Protocol** | HTTPS — use `server.py` for local dev |
+| **Android** | Chrome 81+ · ARCore installed |
+| **iOS** | Safari 15.4+ · ARKit device |
+| **Desktop testing** | [WebXR API Emulator](https://chrome.google.com/webstore/detail/webxr-api-emulator) extension |
 
-> On Android, use Chrome. On iOS, use Safari 15.4+ (no Chrome WebXR on iOS).
+### Entering AR
+
+1. Tap **◈ PLAY IN AR** from the main menu
+2. Review requirements in the AR panel → tap **▶ ENTER AR**
+3. Aim camera at a flat surface; orange reticle appears when detected
+4. Tap **◉ PLACE HERE** to anchor the board
+5. Play with the on-screen D-pad + portal buttons
 
 ### AR Controls
 
-| Gesture | Action |
+| Control | Action |
 |---------|--------|
-| **Single tap** (before placing) | Place level on surface |
-| **One-finger drag** | Rotate level around Y axis |
-| **Two-finger pinch** | Scale level up/down |
-| **Two-finger twist** | Rotate level |
-| **◉ PLACE HERE** button | Anchor level at reticle position |
-| **↺ REPOSITION** button | Pick up and reposition level |
-| **+ / −** buttons | Scale up / down |
-| **↺ ↻** buttons | Rotate left / right |
-| **✕ EXIT AR** | End session, return to menu |
+| D-pad (left) | Move player |
+| **A** (blue) | Portal A |
+| **B** (orange) | Portal B |
+| **+** / **−** | Scale board |
+| **↺** / **↻** | Rotate board |
+| **↺ REPOSITION** | Re-anchor board |
+| **✕ EXIT AR** | End session |
 
-### How It Works
+### How it works
 
-```
-WebXR Session
-   │
-   ├── hit-test feature → detects real-world planes (floor, table)
-   │     └── renders orange reticle ring at detected surface
-   │
-   ├── dom-overlay feature → keeps HUD + dialogue visible in AR
-   │
-   └── On placement:
-         All level meshes are parented to a TransformNode
-         (`ar_level_root`) positioned at the hit-test point.
-         Scale = 0.04 (4 cm per world-unit tile).
-         The BabylonJS WebXR camera takes over from the
-         iso ArcRotateCamera.
-```
+A `BABYLON.TransformNode` (`ar_level_root`) is positioned at the WebXR hit-test point. All level meshes are parented under it — scale/rotate the node to scale/rotate the whole board. The WebXR camera replaces the isometric `ArcRotateCamera` for the duration of the session. DOM overlay (`#ar-dom-overlay`) keeps HUD and portal buttons visible over the camera feed.
 
-### Testing AR on Desktop (without a device)
+---
 
-Chrome DevTools has a WebXR emulator:
-1. Open DevTools → More tools → Sensors
-2. Enable "Emulate XR device"
-3. Navigate to the page over HTTPS (use `npx serve --ssl` or `python3 server.py`)
+## Visual Themes
 
-Or use the **WebXR API Emulator** browser extension (Chrome/Firefox).
+Settings → Visual Theme:
+
+| Theme | Description |
+|-------|-------------|
+| **Dark** (default) | Near-black floors, charcoal walls |
+| **Lab** | Bright sterile white — classic Aperture aesthetic |
+| **Neon** | Deep purple with cyan/magenta glow |
+
+Themes patch CSS variables and BabylonJS scene colours live. Switching mid-game triggers a level reload to rebuild all tile meshes with the new palette.
+
+---
+
+## Localisation
+
+Supported languages: **English** (`en`) and **Italian** (`it`).
+
+All strings live in `src/utils/i18n.js`: UI labels, AMICA lines, level names, hints, and dialogue scripts. To add a new language:
+
+1. Add `{ code: 'xx', label: 'LANGUAGE NAME' }` to `I18n.SUPPORTED`  
+2. Add an `xx` key to every `{ en: '...', it: '...' }` map in the file  
+3. The language picker in Settings appears automatically
+
+---
+
+## Browser Compatibility
+
+| Browser | Notes |
+|---------|-------|
+| Chrome 90+ | Full support, including WebXR AR on Android |
+| Firefox 88+ | Full support (no WebXR AR) |
+| Safari 15+ | Full support, WebXR AR on iOS |
+| Edge 90+ | Full support |
+
+> **TTS:** `window.speechSynthesis` is used for AMICA voice. If no voice is installed, the floating subtitle still displays — speech is optional.
+
+---
+
+## Credits
+
+- **Engine:** [BabylonJS](https://www.babylonjs.com/) (CDN — no install required)
+- **Fonts:** [Share Tech Mono](https://fonts.google.com/specimen/Share+Tech+Mono) · [Rajdhani](https://fonts.google.com/specimen/Rajdhani) via Google Fonts
+- **Concept:** Fan project inspired by Valve's Portal — not affiliated with or endorsed by Valve Corporation
+
+---
+
+*"The Weighted Companion Cube will never threaten to stab you."*  
+*— Aperture Science Enrichment Center*

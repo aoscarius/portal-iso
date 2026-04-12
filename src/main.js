@@ -23,6 +23,9 @@
   const scene = Renderer.getScene();
   Themes.apply(Themes.getCurrent()); // Patch BabylonJS scene colours
 
+  // ── Company intro splash (before loading) ─────────────
+  await IntroSplash.show();
+
   // Preload 3D models if /assets/models/*.glb files are present.
   // Safe to call even if no models exist — silently falls back to procedural geometry.
   // ── Splash + asset loading ───────────────────────────────

@@ -23,6 +23,7 @@ const SplashScreen = (() => {
     _label = document.getElementById('splash-label');
     _pct   = document.getElementById('splash-pct');
     if (!_el) return;
+    _el.style.display = 'flex';
     _el.classList.remove('hidden');
     _visible = true;
     _setProgress(0, 1, '');
@@ -52,6 +53,7 @@ const SplashScreen = (() => {
     _visible = false;
     _el.classList.add('splash-fadeout');
     _el.addEventListener('animationend', () => {
+      _el.style.display = 'none';
       _el.classList.add('hidden');
       _el.classList.remove('splash-fadeout');
     }, { once: true });

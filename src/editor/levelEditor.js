@@ -192,20 +192,11 @@ const LevelEditor = (() => {
       _setStatus(`Grid resized to ${w}×${h}`);
     });
 
-    // Resize grid
-    document.getElementById('btn-resize-grid')?.addEventListener('click', () => {
-      const w = Math.max(4, Math.min(24, parseInt(document.getElementById('grid-w').value, 10)));
-      const h = Math.max(4, Math.min(24, parseInt(document.getElementById('grid-h').value, 10)));
-      _resizeAllLayers(w, h);
-      _setStatus(`Grid resized to ${w}×${h}`);
-    });
+    // Random generator
+    document.getElementById('btn-generate-level')?.addEventListener('click', _generateRandom);
 
     // Clipboard export
-    document.getElementById('btn-copy-level')?.addEventListener('click', () => {
-      navigator.clipboard.writeText(_exportLevelClipboard())
-        .then(() => _setStatus('Copied to clipboard.'))
-        .catch(err => _setStatus('Copy failed: ' + err.message));
-    });
+    document.getElementById('btn-copy-level')?.addEventListener('click', _copyClipboard);
 
     // File operations
     document.getElementById('btn-export-level')?.addEventListener('click', _exportLevel);
@@ -264,6 +255,37 @@ const LevelEditor = (() => {
     });
     gridW = newW; gridH = newH;
     _resizeCanvas(); _render();
+  }
+
+  // ── Random generator ──────────────────────────────────────
+
+  function _generateRandom() {
+    if (typeof LevelGenerator === 'undefined') {
+      _setStatus('LevelGenerator not loaded.'); return;
+    }
+    const diffEl = document.getElementById('gen-difficulty');
+    const diff = diffEl ? parseInt(diffEl.value) || 2 : 2;
+    const ld = LevelGenerator.generate({
+      seed:       Date.now(),
+      difficulty: Math.max(1, Math.min(5, diff)),
+      width:      gridW,
+      height:     gridH,
+      id:         9000 + Math.floor(Math.random() * 900),
+    });
+    gridW = ld.width; gridH = ld.height;
+    _layers[_activeLayer] = ld.grid.map(row => [...row]);
+    _links = ld.links;
+    _lasersByLayer[_activeLayer] = ld.lasers;
+    ld.amica
+    _resizeCanvas(); _render();
+    const wEl = document.getElementById('grid-w');
+    const hEl = document.getElementById('grid-h');
+    if (wEl) wEl.value = gridW;
+    if (hEl) hEl.value = gridH;
+    const nameEl = document.getElementById('editor-level-name');
+    if (nameEl) nameEl.value = typeof I18n !== 'undefined'
+      ? I18n.getLocalized(ld.name) : (ld.name?.en || 'GENERATED');
+    _setStatus(`Random stage generated (difficulty ${diff}).`);
   }
 
   // ── Canvas interaction ────────────────────────────────────
@@ -574,8 +596,8 @@ const LevelEditor = (() => {
     _layers.forEach((g, li) => {
       (_lasersByLayer[li] || []).forEach(l => {
         // Check 1 rows upper and 1 rows down the laser direction for a receiver target
-        let found = false; for (let off = -1; off <= 1 && !found; off++) {
-          // let rx = l.emitter.x, rz = l.emitter.z, rid = l.receiverId;
+        let rx = l.emitter.x, rz = l.emitter.z, rid = l.receiverId, found = false; 
+        for (let off = -1; off <= 1 && !found; off++) {
           for (let s = 0; s < 20; s++) {
             const rx = l.emitter.x + l.dir.dx*s + (-l.dir.dz * off);
             const rz = l.emitter.z + l.dir.dz*s + (l.dir.dx * off);
@@ -585,7 +607,6 @@ const LevelEditor = (() => {
           }
         }
         allLasers.push({ emitter: { ...l.emitter, layer: li }, dir: l.dir, receiverId: rid });
-        console.log({ emitter: { ...l.emitter, layer: li }, dir: l.dir, receiverId: rid });
       });
     });
 
@@ -676,21 +697,26 @@ DIALOGUE_SCRIPTS.push(
     link.click();
   }
 
+  function _copyClipboard() {
+    const js = _exportLevelClipboard(_buildLevelObject());
+    navigator.clipboard.writeText(js)
+      .then(() => _setStatus('Copied to clipboard.'))
+      .catch(err => _setStatus('Copy failed: ' + err.message));
+  }
   // Grid-only export for clipboard
-  function _exportLevelClipboard() {
-    const data = _buildLevelObject();
+  function _exportLevelClipboard(data) {
     const layersStr = data.layers.map((l, li) =>
       `    { y: ${l.y}, grid: [\n${l.grid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ] }`
     ).join(',\n');
-    const gridStr = `[\n${l.grid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ]`
+    const gridStr = `[\n${data.grid.map(row => `      [${row.join(',')}]`).join(',\n')}\n    ]`
 
-    return `
-    width: ${gridW}, height: ${gridH},
-    layers: [\n${layersStr}\n],
-    grid: ${gridStr},
-    lasers: ${JSON.stringify(data.lasers ?? [], null, 4)},
-    links: ${JSON.stringify(data.links ?? [], null, 4)},
-    `;
+    return [
+    `  width: ${gridW}, height: ${gridH},`,
+    `  layers: [\n${layersStr}\n],`,
+    `  grid: ${gridStr},`,
+    `  lasers: ${JSON.stringify(data.lasers ?? [], null, 4)},`,
+    `  links: ${JSON.stringify(data.links ?? [], null, 4)},`,
+    ].join('\n');
   }
 
   // Data Import - Parses JS files by executing them in a sandbox
@@ -752,11 +778,15 @@ DIALOGUE_SCRIPTS.push(
   function _testLevel() {
     let hasPlayer = false, hasExit = false;
     _layers.forEach(g => {
-      for (let z = 0; z < gridH; z++)
-        for (let x = 0; x < gridW; x++) {
-          if (g[z][x] === CONSTANTS.TILE.PLAYER) hasPlayer = true;
-          if (g[z][x] === CONSTANTS.TILE.EXIT)   hasExit   = true;
+      if (!Array.isArray(g)) return;
+      for (let z = 0; z < g.length; z++) {
+        const row = g[z];
+        if (!Array.isArray(row)) continue;
+        for (let x = 0; x < row.length; x++) {
+          if (row[x] === CONSTANTS.TILE.PLAYER) hasPlayer = true;
+          if (row[x] === CONSTANTS.TILE.EXIT)   hasExit   = true;
         }
+      }
     });
     if (!hasPlayer) { _setStatus('⚠ No PLAYER start placed.'); return; }
     if (!hasExit)   { _setStatus('⚠ No EXIT placed.'); return; }

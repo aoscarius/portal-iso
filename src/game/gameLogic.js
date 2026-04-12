@@ -170,7 +170,7 @@ const GameLogic = (() => {
 
     _handlers.portalUsed = ({ exitX, exitZ }) => {
       AudioEngine.teleport();
-      Particles.teleportBurst(exitX, exitZ);
+      // Particles.teleportBurst(exitX, exitZ);
       AMICA.sayLine('teleport', 200);
     };
 
@@ -285,7 +285,7 @@ const GameLogic = (() => {
 
     if (!wasActive) {
       AudioEngine.buttonPress();
-      Particles.buttonFlash(bx, bz);
+      // Particles.buttonFlash(bx, bz);
       AMICA.sayLine('button_pressed', 300);
       Renderer.pressButton?.(bx, bz, li);
 

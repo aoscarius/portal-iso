@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>PORTAL ISO — Aperture Isometric Laboratories</title>
+  <title>PORTAL ISO - Isometric Edition</title>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -54,9 +54,6 @@
       position: fixed; bottom: 106px; left: 12px; z-index: 500;
       flex-direction: column; align-items: center; gap: 4px;
     }
-    body:has(#ar-dom-overlay:not([style*="display:none"])) #touch-dpad-arrows {
-      bottom: 142px;
-    }
     .dpad-row  { display: flex; gap: 4px; align-items: center; }
     .dpad-gap  { width: 48px; }
 
@@ -73,9 +70,6 @@
     #touch-dpad-portals {
       position: fixed; bottom: 106px; right: 12px; z-index: 500;
       flex-direction: column; gap: 10px;
-    }
-    body:has(#ar-dom-overlay:not([style*="display:none"])) #touch-dpad-portals {
-      bottom: 142px;
     }
     #touch-dpad-portals button {
       width: 64px; height: 64px;
@@ -130,7 +124,7 @@
     #splash-screen {
       position: fixed; inset: 0; z-index: 9999;
       background: #05050a;
-      display: flex; align-items: center; justify-content: center;
+      display: none; align-items: center; justify-content: center;
       font-family: var(--font-mono, 'Share Tech Mono', monospace);
     }
     #splash-screen.hidden { display: none; }
@@ -199,6 +193,98 @@
       color: #2a2a38; margin: 0; margin-top: 4px;
     }
 
+    /* ── Company intro splash ───────────────────────────── */
+    #intro-splash {
+      position: fixed; inset: 0; z-index: 10000;
+      background: #05050a;
+      display: none;               /* shown via JS */
+      align-items: center; justify-content: center;
+      font-family: var(--font-mono, 'Share Tech Mono', monospace);
+      overflow: hidden;
+    }
+
+    /* Animated background grid — subtle dot matrix */
+    #intro-splash::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(255,106,0,0.07) 1px, transparent 1px);
+      background-size: 32px 32px;
+      animation: intro-grid-drift 8s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes intro-grid-drift {
+      from { background-position: 0 0; }
+      to   { background-position: 32px 32px; }
+    }
+
+    .intro-inner {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 20px; width: min(520px, 90vw); text-align: center;
+    }
+
+    /* ── Logo mark — animated SVG ── */
+    .intro-logo-wrap {
+      position: relative;
+      width: 120px; height: 120px;
+    }
+
+    @keyframes intro-orbit {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes intro-orbit-rev {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(-360deg); }
+    }
+    .intro-ring-outer { animation: intro-orbit     14s linear infinite; transform-origin: 60px 60px; }
+    .intro-ring-inner { animation: intro-orbit-rev 9s  linear infinite; transform-origin: 60px 60px; }
+
+    @keyframes intro-pulse {
+      0%,100% { opacity: 0.7; filter: drop-shadow(0 0 6px rgba(255,106,0,0.5)); }
+      50%      { opacity: 1.0; filter: drop-shadow(0 0 18px rgba(255,106,0,0.9)); }
+    }
+    .intro-logo-svg {
+      animation: intro-pulse 2.4s ease-in-out infinite;
+    }
+
+    /* ── Wordmark ── */
+    .intro-company {
+      font-family: var(--font-display, 'Rajdhani', sans-serif);
+      font-size: 52px; font-weight: 700;
+      letter-spacing: 4px; color: #e8e8f0;
+      line-height: 1; margin: 0;
+    }
+    .intro-company-accent {
+      color: #ff6a00;
+    }
+    .intro-tagline {
+      font-family: var(--font-mono, 'Share Tech Mono', monospace);
+      font-size: 10px; letter-spacing: 4px;
+      color: #4a4a62; margin: 0;
+      text-transform: uppercase;
+    }
+    .intro-tagline em {
+      color: #6a6a88; font-style: normal;
+    }
+
+    /* ── Separator ── */
+    .intro-sep {
+      width: 120px; height: 1px;
+      background: linear-gradient(90deg, transparent, #ff6a00, transparent);
+      opacity: 0.5;
+    }
+
+    /* ── Skip hint ── */
+    .intro-skip {
+      position: absolute; bottom: 28px; right: 32px;
+      font-size: 9px; letter-spacing: 2px; color: #2a2a3a;
+      cursor: pointer; user-select: none;
+      transition: color 0.2s;
+    }
+    .intro-skip:hover { color: #ff6a00; }
+
     /* Scrollbars */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg-panel); }
@@ -213,6 +299,83 @@
   </style>
 </head>
 <body>
+  
+  <!-- ══ COMPANY INTRO SPLASH ══════════════════════════════ -->
+  <div id="intro-splash">
+
+    <div class="intro-inner">
+
+      <!-- Animated logo mark -->
+      <div class="intro-logo-wrap">
+        <svg class="intro-logo-svg" viewBox="0 0 120 120" width="120" height="120"
+             xmlns="http://www.w3.org/2000/svg" aria-label="42 Software">
+
+          <!-- Outer dashed orbit ring -->
+          <g class="intro-ring-outer">
+            <circle cx="60" cy="60" r="54"
+              fill="none" stroke="#ff6a00" stroke-width="1"
+              stroke-dasharray="6 10" opacity="0.4"/>
+            <!-- Orbital node -->
+            <circle cx="60" cy="6" r="3.5" fill="#ff6a00" opacity="0.9"/>
+          </g>
+
+          <!-- Inner orbit ring -->
+          <g class="intro-ring-inner">
+            <circle cx="60" cy="60" r="38"
+              fill="none" stroke="#ff6a00" stroke-width="0.8"
+              stroke-dasharray="3 8" opacity="0.25"/>
+            <!-- Orbital node opposite -->
+            <circle cx="60" cy="22" r="2.5" fill="#ff9944" opacity="0.7"/>
+          </g>
+
+          <!-- Core hexagon -->
+          <polygon
+            points="60,28 82,41 82,67 60,80 38,67 38,41"
+            fill="none" stroke="#ff6a00" stroke-width="1.8" opacity="0.6"/>
+
+          <!-- Inner hex glow fill -->
+          <polygon
+            points="60,34 78,44.5 78,65.5 60,76 42,65.5 42,44.5"
+            fill="rgba(255,106,0,0.04)"/>
+
+          <!-- The "42" numeral — main mark -->
+          <!-- "4" -->
+          <path d="M36 70 L36 52 L46 52 L46 60 L36 60" fill="none"
+                stroke="#ff6a00" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="33" y1="60" x2="49" y2="60"
+                stroke="#ff6a00" stroke-width="2.8" stroke-linecap="round"/>
+
+          <!-- "2" -->
+          <path d="M54 55 Q54 48 63 48 Q72 48 72 55 Q72 62 54 70 L72 70"
+                fill="none" stroke="#ff6a00" stroke-width="2.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Center dot -->
+          <circle cx="60" cy="60" r="2.5" fill="#ff6a00" opacity="0.5"/>
+
+          <!-- Corner tick marks -->
+          <line x1="8"  y1="8"  x2="16" y2="8"  stroke="#ff6a00" stroke-width="1.5" opacity="0.4"/>
+          <line x1="8"  y1="8"  x2="8"  y2="16" stroke="#ff6a00" stroke-width="1.5" opacity="0.4"/>
+          <line x1="112" y1="8"  x2="104" y2="8"  stroke="#ff6a00" stroke-width="1.5" opacity="0.4"/>
+          <line x1="112" y1="8"  x2="112" y2="16" stroke="#ff6a00" stroke-width="1.5" opacity="0.4"/>
+          <line x1="8"  y1="112" x2="16"  y2="112" stroke="#ff6a00" stroke-width="1.5" opacity="0.4"/>
+          <line x1="8"  y1="112" x2="8"   y2="104" stroke="#ff6a00" stroke-width="1.5" opacity="0.4"/>
+          <line x1="112" y1="112" x2="104" y2="112" stroke="#ff6a00" stroke-width="1.5" opacity="0.4"/>
+          <line x1="112" y1="112" x2="112" y2="104" stroke="#ff6a00" stroke-width="1.5" opacity="0.4"/>
+        </svg>
+      </div>
+
+      <!-- Wordmark -->
+      <h1 class="intro-company">A<span class="intro-company-accent">OSCAR</span>IUS</h1>
+      <div class="intro-sep"></div>
+      <p class="intro-tagline"> PRESENTS</p>
+
+    </div>
+
+    <!-- Skip hint -->
+    <span class="intro-skip" id="intro-skip-btn">SKIP ▶</span>
+
+  </div>
 
   <!-- ══ SPLASH SCREEN ══════════════════════════════════════ -->
   <div id="splash-screen">
@@ -256,7 +419,7 @@
   <!-- ═══════════════════════════════════════════════════════
        MAIN MENU
   ════════════════════════════════════════════════════════ -->
-  <div id="main-menu" class="overlay active">
+  <div id="main-menu" class="overlay hidden">
     <div class="menu-bg-grid"></div>
     <div class="menu-content">
       <div class="aperture-logo">
@@ -498,6 +661,17 @@
         <label class="editor-label">W <input type="number" id="grid-w" value="10" min="4" max="24"/></label>
         <label class="editor-label">H <input type="number" id="grid-h" value="10" min="4" max="24"/></label>
         <button class="tool-btn full" id="btn-resize-grid">⊞ RESIZE</button>
+        <div class="editor-section-title">RANDOM LEVEL</div>
+        <div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">
+          <label class="editor-label">DIFFIFCULY
+            <select id="gen-difficulty" class="editor-level">
+              <option value="1">1: Easy</option><option value="2" selected>2: Normal</option>
+              <option value="3">3: Hard</option><option value="4">4: Expert</option>
+              <option value="5">5: Insane</option>
+            </select>
+          </label>
+        </div>
+        <button class="tool-btn full" id="btn-generate-level">⚄ GENERATE</button>        
         <div class="editor-section-title">LASER DIR</div>
         <div class="laser-dir-picker">
           <button class="dir-btn active" data-dx="1"  data-dz="0" >→</button>
@@ -680,7 +854,6 @@
   <script src="src/game/particles.js?v=dc4f208d"></script>
   <script src="src/game/physics.js?v=fa2464f6"></script>
   <script src="src/game/portalGun.js?v=01ea8258"></script>
-  <script src="src/game/player.js?v=5a7b6885"></script>
   <script src="src/game/laser.js?v=72eb15b5"></script>
   <script src="src/game/minimap.js?v=1ec153ef"></script>
   <script src="src/game/arManager.js?v=a0f855da"></script>
@@ -692,17 +865,21 @@
   <script src="src/ui/dialoguePanel.js?v=5f0b003a"></script>
   <script src="src/ui/dialogueScript.js?v=f9e49993"></script>
   <script src="src/ui/uiManager.js?v=afb94fed"></script>
+  <script src="src/ui/introSplash.js?v=a63bcac7"></script>
+  <script src="src/ui/splashScreen.js?v=a27b7ecd"></script>
 
   <!-- 3D model loader (optional — gracefully skips missing .glb files) -->
   <script src="src/game/assetLoader.js?v=acb917c8"></script>
 
   <!-- Game logic (depends on all above) -->
+  <script src="src/game/player.js?v=5a7b6885"></script>
   <script src="src/game/levelGenerator.js?v=52994473"></script>
   <script src="src/game/levelGenerator_multi.js?v=2ae9ca37"></script>
+
+  <!-- Game logic (needs all above) -->
   <script src="src/game/gameLogic.js?v=96399228"></script>
 
   <!-- Entry point -->
-  <script src="src/ui/splashScreen.js?v=a27b7ecd"></script>
   <script src="src/main.js?v=a334f133"></script>
 
 </body>
