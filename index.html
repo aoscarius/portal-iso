@@ -751,6 +751,7 @@
           <button class="ar-icon-btn" id="ar-btn-rot-left"   title="Rotate left">↺</button>
           <button class="ar-icon-btn" id="ar-btn-rot-right"  title="Rotate right">↻</button>
           <button class="ar-icon-btn" id="ar-btn-scale-up"   title="Scale up">+</button>
+          <button class="ar-icon-btn" id="ar-btn-menu"       title="Menù">☰</button>
         </div>
 
         <!-- Primary actions -->
@@ -776,7 +777,7 @@
     <!-- Touch controls: arrow pad (bottom-left) + portal buttons (bottom-right) -->
     <!-- AR win toast — shown instead of win-overlay when in AR -->
     <div id="ar-win-toast" style="
-      display:none; position:absolute; top:50%; left:50%;
+      display:none; position:absolute; top:35%; left:50%;
       transform:translate(-50%,-50%); z-index:910;
       flex-direction:column; gap:14px; align-items:center;
       background:rgba(8,8,11,.96); border:1px solid #00ff88;
@@ -786,12 +787,23 @@
       <div id="ar-win-stats" style="font-size:9px;letter-spacing:1.5px;color:#5a5a72;"></div>
       <button id="ar-win-next" style="width:100%;padding:11px;background:transparent;border:1px solid #00ff88;color:#00ff88;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">NEXT CHAMBER ▶</button>
       <button id="ar-win-retry" style="width:100%;padding:11px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">↺ RETRY</button>
-      <button id="ar-win-menu" style="width:100%;padding:11px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">✕ EXIT AR</button>
+      <button id="ar-win-exit" style="width:100%;padding:11px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">✕ EXIT AR</button>
+    </div>
+    <div id="ar-fail-toast" style="
+      display:none; position:absolute; top:35%; left:50%;
+      transform:translate(-50%,-50%); z-index:910;
+      flex-direction:column; gap:14px; align-items:center;
+      background:rgba(8,8,11,.96); border:1px solid #ff0022;
+      border-top:3px solid #ff0022; padding:28px 36px; min-width:220px;
+      font-family:var(--font-mono); pointer-events:auto; text-align:center;">
+      <div style="font-size:13px;letter-spacing:3px;color:#ff0022;">✗ TEST FAILED</div>
+      <button id="ar-fail-retry" style="width:100%;padding:11px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">↺ RETRY</button>
+      <button id="ar-fail-exit" style="width:100%;padding:11px;background:transparent;border:1px solid #383848;color:#9090a8;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;cursor:pointer;">✕ EXIT AR</button>
     </div>
 
     <!-- AR pause menu -->
     <div id="ar-menu-panel" style="
-      display:none;position:absolute;top:50%;left:50%;
+      display:none;position:absolute;top:35%;left:50%;
       transform:translate(-50%,-50%);z-index:900;
       flex-direction:column;gap:12px;align-items:center;
       background:rgba(8,8,11,.95);border:1px solid #ff6a00;

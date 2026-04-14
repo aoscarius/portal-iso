@@ -76,7 +76,6 @@ const UIManager = (() => {
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
-    document.getElementById('btn-back-editor-win')?.style.setProperty('display', _fromEditor ? 'block' : 'none');
     
     // In AR: show toast inside ar-dom-overlay instead of blocking overlay
     if (typeof ARManager !== 'undefined' && ARManager.isActive?.()) {
@@ -91,7 +90,8 @@ const UIManager = (() => {
       if (!_isTouchDevice()) ARManager.show3DWin?.();
       return;
     }
-
+    
+    document.getElementById('btn-back-editor-win')?.style.setProperty('display', _fromEditor ? 'block' : 'none');
     Minimap.setVisible(false);
     _showTouchControls(false);
 
@@ -111,8 +111,7 @@ const UIManager = (() => {
     document.getElementById('btn-fullscreen')?.classList.remove('cam-visible');
     document.getElementById('btn-orbit')?.classList.remove('cam-visible');
     document.getElementById('btn-enter-ar')?.classList.remove('cam-visible');
-    document.getElementById('btn-back-editor-fail')?.style.setProperty('display', _fromEditor ? 'block' : 'none');
-
+    
     if (typeof ARManager !== 'undefined' && ARManager.isActive?.()) {
       const toast = document.getElementById('ar-fail-toast');
       if (toast) {
@@ -121,7 +120,8 @@ const UIManager = (() => {
       if (!_isTouchDevice()) ARManager.show3DFail?.();
       return;
     }
-
+    
+    document.getElementById('btn-back-editor-fail')?.style.setProperty('display', _fromEditor ? 'block' : 'none');
     Minimap.setVisible(false);
     _showTouchControls(false);
 
@@ -342,7 +342,9 @@ const UIManager = (() => {
   // ── Touch / fullscreen helpers ────────────────────────────
 
   function _isTouchDevice() {
-    return navigator.maxTouchPoints > 1 || /Android|iPhone|iPad/i.test(navigator.userAgent);
+    const isQuest  = /OculusBrowser|MetaQuest/i.test(navigator.userAgent || '');
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent || '') || (navigator.maxTouchPoints > 1);
+    return !isQuest && isMobile;
   }
 
   function _showTouchControls(show) {

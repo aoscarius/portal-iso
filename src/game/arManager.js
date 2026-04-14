@@ -279,6 +279,8 @@ const ARManager = (() => {
   async function exit() {
     if (!_arActive || !_xrBase) return;
     try { await _xrBase.exitXRAsync(); } catch { _onSessionEnd(); }
+    document.body.classList.remove('ar-active');
+    EventBus.emit('ar:exited');
   }
 
   // ── Session end ──────────────────────────────────────────
@@ -322,9 +324,6 @@ const ARManager = (() => {
     _triggerHeld = _squeezeHeld = false; _stickX = _stickY = 0;
     _reticlePose = null;
     if (_boardMoveObs) { try { _scene.onBeforeRenderObservable.remove(_boardMoveObs); } catch(_){} _boardMoveObs = null; }
-
-    document.body.classList.remove('ar-active');
-    EventBus.emit('ar:exited');
   }
 
   function _reportError(msg) {
