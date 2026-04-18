@@ -102,6 +102,7 @@ const CutscenePlayer = (() => {
       case 'video':  _playVideo(def);  break;
       case 'glb':    _playGLB(def);    break;
       case 'image':  _playImage(def);  break;
+      case 'slides': _playSlides(def); break;
       default:
         // Unknown type — just show a black screen with caption for `duration`
         _playCaption(def.caption ?? '', def.duration ?? 3000);
@@ -205,6 +206,97 @@ const CutscenePlayer = (() => {
     if (def.caption) _overlay.insertBefore(_makeCaption(def.caption), _skipBtn);
 
     _skipTimer = setTimeout(() => { _cleanup(); _onComplete?.(); }, def.duration ?? 4000);
+  }
+
+  // ── Slides cutscene — cinematic text panels ───────────────
+
+  function _playSlides(def) {
+    const slides = def.slides || [];
+    if (!slides.length) { _cleanup(); _onComplete?.(); return; }
+
+    let idx = 0;
+
+    const wrap = document.createElement('div');
+    Object.assign(wrap.style, {
+      position: 'absolute', inset: '0',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+    });
+    _overlay.insertBefore(wrap, _skipBtn);
+
+    const show = () => {
+      if (idx >= slides.length) { _cleanup(); _onComplete?.(); return; }
+      const s = slides[idx++];
+
+      wrap.innerHTML = '';
+
+      // Optional SVG logo mark
+      if (s.logo) {
+        const svg = document.createElement('div');
+        svg.innerHTML = s.logo;
+        Object.assign(svg.style, { marginBottom: '32px', opacity: '0',
+          transition: 'opacity 0.6s ease', animation: 'none' });
+        wrap.appendChild(svg);
+        requestAnimationFrame(() => svg.style.opacity = '1');
+      }
+
+      // Year / label
+      if (s.year) {
+        const y = document.createElement('div');
+        y.textContent = s.year;
+        Object.assign(y.style, {
+          fontFamily: "var(--font-mono,'Share Tech Mono',monospace)",
+          fontSize: '11px', letterSpacing: '6px', color: 'rgba(255,106,0,0.8)',
+          marginBottom: '16px', opacity: '0', transition: 'opacity 0.5s ease 0.2s',
+        });
+        wrap.appendChild(y);
+        requestAnimationFrame(() => y.style.opacity = '1');
+      }
+
+      // Main text
+      const txt = document.createElement('div');
+      txt.textContent = s.text || '';
+      Object.assign(txt.style, {
+        fontFamily: "var(--font-display,'Rajdhani',sans-serif)",
+        fontSize: s.big ? '36px' : '22px',
+        fontWeight: '700',
+        letterSpacing: '2px',
+        color: s.accent ? '#ff6a00' : 'rgba(255,255,255,0.88)',
+        textAlign: 'center', maxWidth: '680px', lineHeight: '1.4',
+        opacity: '0', transition: 'opacity 0.7s ease 0.1s',
+        padding: '0 32px',
+      });
+      wrap.appendChild(txt);
+      requestAnimationFrame(() => txt.style.opacity = '1');
+
+      // Sub text
+      if (s.sub) {
+        const sub = document.createElement('div');
+        sub.textContent = s.sub;
+        Object.assign(sub.style, {
+          fontFamily: "var(--font-mono,'Share Tech Mono',monospace)",
+          fontSize: '11px', letterSpacing: '3px',
+          color: 'rgba(255,255,255,0.35)', marginTop: '16px',
+          opacity: '0', transition: 'opacity 0.6s ease 0.5s',
+        });
+        wrap.appendChild(sub);
+        requestAnimationFrame(() => sub.style.opacity = '1');
+      }
+
+      // Horizontal rule accent
+      const hr = document.createElement('div');
+      Object.assign(hr.style, {
+        width: '0', height: '1px', marginTop: '24px',
+        background: 'linear-gradient(90deg,transparent,rgba(255,106,0,0.6),transparent)',
+        transition: `width ${(s.duration||3000)*0.4}ms ease 0.3s`,
+      });
+      wrap.appendChild(hr);
+      requestAnimationFrame(() => hr.style.width = '280px');
+
+      _skipTimer = setTimeout(show, s.duration || 3000);
+    };
+
+    show();
   }
 
   // ── Caption-only ──────────────────────────────────────────

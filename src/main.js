@@ -45,6 +45,63 @@
   } catch (_) { /* missing levels - skip */ }
 
   SplashScreen.hide();
+  
+  // ── Game intro cutscene (shown once at first launch) ─────
+  const _cutsceneSeen = (() => { try { return !!localStorage.getItem('portal_iso_intro_seen'); } catch(_){ return false; } })();
+  if (!_cutsceneSeen && typeof CutscenePlayer !== 'undefined') {
+    await new Promise(resolve => {
+      CutscenePlayer.play({
+        type: 'slides',
+        skippable: true,
+        slides: [
+          {
+            year: 'APERTURE SCIENCE',
+            text: 'We do what we must',
+            sub: 'because we can.',
+            duration: 3200,
+          },
+          {
+            year: '',
+            text: 'For the good of all of us.',
+            sub: 'Except the ones who are dead.',
+            duration: 2800,
+          },
+          {
+            year: 'YEAR 0',
+            text: 'Cave Johnson founds Aperture Science.',
+            sub: 'Initial product: shower curtains.',
+            duration: 3000,
+          },
+          {
+            year: 'YEAR 14',
+            text: 'The first portal prototype is fired.',
+            sub: 'Three scientists step through. Two return.',
+            duration: 3200,
+          },
+          {
+            year: 'YEAR 22',
+            text: 'The Enrichment Centre opens.',
+            sub: 'Human testing begins. Voluntarily.',
+            duration: 3000,
+          },
+          {
+            year: 'TODAY',
+            text: 'You wake up.',
+            sub: 'AMICA is watching.',
+            duration: 2600,
+          },
+          {
+            text: 'PORTAL ISO',
+            big: true,
+            accent: true,
+            sub: 'APERTURE ISOMETRIC LABORATORIES',
+            duration: 3400,
+          },
+        ],
+      }, resolve);
+    });
+    try { localStorage.setItem('portal_iso_intro_seen', '1'); } catch(_) {}
+  }
 
   // Init AR infrastructure (non-blocking; does not enter XR)
   ARManager.init(scene).catch(e => console.warn('[AR init]', e));
