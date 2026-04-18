@@ -438,7 +438,7 @@
         </svg>
       </div>
       <h1 class="game-title">PORTAL<span class="title-iso">ISO</span></h1>
-      <p class="subtitle">APERTURE ISOMETRIC LABORATORIES<br><span style="font-size:8px;letter-spacing:2px;color:#ff6a00;opacity:.7">MULTI-LAYER · SOLUTION B</span></p>
+      <p class="subtitle">APERTURE ISOMETRIC LABORATORIES</p>
       <div class="menu-divider"></div>
       <nav class="menu-nav">
         <button class="menu-btn primary" id="btn-play"       data-i18n="menu_play">▶ INITIALIZE TESTS</button>
@@ -546,6 +546,11 @@
       <div class="settings-row">
         <label class="settings-label">ORBIT CAMERA</label>
         <label class="toggle-switch"><input type="checkbox" id="toggle-orbit"/><span class="toggle-slider"></span></label>
+      </div>
+      <!-- Camera-relative movement -->
+      <div class="settings-row">
+        <label class="settings-label">CAM-RELATIVE MOVE</label>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-cam-relative" checked/><span class="toggle-slider"></span></label>
       </div>
       <!-- Control scheme -->
       <div class="settings-row settings-row-stacked">
@@ -887,6 +892,7 @@
   <script src="src/game/player.js?v=5a7b6885"></script>
   <script src="src/game/levelGenerator.js?v=52994473"></script>
   <script src="src/game/levelGenerator_multi.js?v=2ae9ca37"></script>
+  <script src="src/game/camRelativeMove.js"></script>
 
   <!-- Game logic (needs all above) -->
   <script src="src/game/gameLogic.js?v=96399228"></script>

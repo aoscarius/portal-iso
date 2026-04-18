@@ -145,11 +145,13 @@ const Player = (() => {
   // ── Touch D-pad ───────────────────────────────────────────
 
   function _setupTouchDpad() {
+    const _crm = dir => typeof CamRelativeMove !== 'undefined'
+      ? CamRelativeMove.remap(dir) : dir;
     const map = {
-      'dpad-up':       () => _step(CONSTANTS.DIRS.DOWN),
-      'dpad-down':     () => _step(CONSTANTS.DIRS.UP),
-      'dpad-left':     () => _step(CONSTANTS.DIRS.LEFT),
-      'dpad-right':    () => _step(CONSTANTS.DIRS.RIGHT),
+      'dpad-up':       () => _step(_crm(CONSTANTS.DIRS.DOWN)),
+      'dpad-down':     () => _step(_crm(CONSTANTS.DIRS.UP)),
+      'dpad-left':     () => _step(_crm(CONSTANTS.DIRS.LEFT)),
+      'dpad-right':    () => _step(_crm(CONSTANTS.DIRS.RIGHT)),
       'dpad-portal-a': () => PortalGun.shoot('A', position, facing, currentLayer),
       'dpad-portal-b': () => PortalGun.shoot('B', position, facing, currentLayer),
     };
@@ -229,7 +231,8 @@ const Player = (() => {
   function _handleClassic(code) {
     if (AIM_MAP[code]) { _aimTo(AIM_MAP[code]); return; }
     const dir = CLASSIC_MAP[code];
-    if (dir) _step(dir);
+    if (dir) _step(typeof CamRelativeMove !== 'undefined'
+      ? CamRelativeMove.remap(dir) : dir);
   }
 
   function _aimTo(dir) {
@@ -241,8 +244,8 @@ const Player = (() => {
 
   function _handleTank(code) {
     switch (code) {
-      case 'KeyW': case 'ArrowUp':    _step(facing); break;
-      case 'KeyS': case 'ArrowDown':  _step({ dx: -facing.dx, dz: -facing.dz }); break;
+      case 'KeyW': case 'ArrowUp':    _step(typeof CamRelativeMove !== 'undefined' ? CamRelativeMove.remap(facing) : facing); break;
+      case 'KeyS': case 'ArrowDown':  _step(typeof CamRelativeMove !== 'undefined' ? CamRelativeMove.remap({ dx: -facing.dx, dz: -facing.dz }) : { dx: -facing.dx, dz: -facing.dz }); break;
       case 'KeyA': case 'ArrowLeft':  _turn(-1); break;
       case 'KeyD': case 'ArrowRight': _turn(+1); break;
     }
