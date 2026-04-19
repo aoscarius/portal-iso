@@ -177,6 +177,7 @@
       document.getElementById('ar-win-exit')?.addEventListener('click', async () => {
         _hideArWinToast();
         ARManager.exit();
+        EventBus.emit('game:to-menu');
       });
       // AR fail toast buttons
       function _hideArFailToast() {
@@ -190,7 +191,7 @@
       document.getElementById('ar-fail-exit')?.addEventListener('click', async () => {
         _hideArFailToast();
         ARManager.exit();
-        GameLogic.retryLevel?.();
+        EventBus.emit('game:to-menu');
       });
 
     } catch (err) {
