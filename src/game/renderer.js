@@ -15,6 +15,8 @@ const Renderer = (() => {
 
   // Per-layer state
   let _levelLayers  = [];   // [y, ...] — world-space Y offset per layer
+  let _currentWidth  = 0;
+  let _currentHeight = 0;
   let _activeLayer  = 0;
   let _layerRoots   = [];   // TransformNode per layer — controls visibility
   let _orbitUnlocked = false;
@@ -221,6 +223,8 @@ const Renderer = (() => {
 
     _levelLayers = layers.map(l => l.y ?? 0);
     const { width, height } = levelData;
+    _currentWidth  = width;
+    _currentHeight = height;
 
     layers.forEach((layer, li) => {
       // Each layer hangs under a TransformNode — toggling setEnabled shows/hides entire floor
@@ -933,6 +937,19 @@ const Renderer = (() => {
     getScene:  () => scene,
     getEngine: () => engine,
     getCamera: () => camera,
+
+    /**
+     * Returns the world-space centre of the currently loaded level.
+     * Used by ARManager to offset the board pivot to the level centre.
+     * Returns {x, z} in TILE_SIZE units (same as gridToWorld).
+     */
+    getLevelCenter() {
+      const TS = CONSTANTS.TILE_SIZE;
+      return {
+        x: (_currentWidth  / 2) * TS,
+        z: (_currentHeight / 2) * TS,
+      };
+    },
 
     /** Toggle shadow map refresh for performance tuning. */
     setShadowsEnabled(enabled) {

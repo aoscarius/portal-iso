@@ -51,6 +51,10 @@ const GameLogic = (() => {
     // Initialise subsystems in dependency order
     Physics.init(levelData);           // multi-layer aware
     Renderer.buildLevel(levelData);    // full levelData incl. layers[]
+    // In AR: re-centre the board pivot so rotation uses the level's geometric centre.
+    if (typeof ARManager !== 'undefined' && ARManager.isActive?.()) {
+      ARManager.centreBoard();
+    }
     Particles.clearAll();
     PortalGun.reset();
 
